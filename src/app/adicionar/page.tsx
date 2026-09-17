@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Estacao, Ocasiao, Piece, Tipo } from "@/lib/types";
+import { generateId } from "@/lib/id";
 import {
   addCustomCor,
   addCustomOcasiao,
@@ -93,7 +94,7 @@ export default function AdicionarPecaPage() {
     setSalvando(true);
     setErro(null);
     const piece: Piece = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       tipo,
       ocasioes,
       cor,

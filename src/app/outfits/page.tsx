@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Outfit, Piece } from "@/lib/types";
+import { generateId } from "@/lib/id";
 import { addOutfit, getOutfits, getPieces } from "@/lib/storage";
 
 export default function OutfitsPage() {
@@ -36,7 +37,7 @@ export default function OutfitsPage() {
     setSalvando(true);
     setErro(null);
     const outfit: Outfit = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       nome,
       pecaIds: selecionadas,
       secoes: secoesInput
