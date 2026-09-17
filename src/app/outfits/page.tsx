@@ -7,23 +7,34 @@ import { addOutfit, getOutfits, getPieces } from "@/lib/storage";
 export default function OutfitsPage() {
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [pieces, setPieces] = useState<Piece[]>([]);
+  const [carregando, setCarregando] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [nome, setNome] = useState("");
   const [secoesInput, setSecoesInput] = useState("");
   const [selecionadas, setSelecionadas] = useState<string[]>([]);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function carregar() {
+    const [o, p] = await Promise.all([getOutfits(), getPieces()]);
+    setOutfits(o);
+    setPieces(p);
+    setCarregando(false);
+  }
 
   useEffect(() => {
-    setOutfits(getOutfits());
-    setPieces(getPieces());
+    carregar();
   }, []);
 
   function togglePeca(id: string) {
     setSelecionadas((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!nome || selecionadas.length === 0) return;
+    setSalvando(true);
+    setErro(null);
     const outfit: Outfit = {
       id: crypto.randomUUID(),
       nome,
@@ -34,8 +45,13 @@ export default function OutfitsPage() {
         .filter(Boolean),
       criadoEm: new Date().toISOString(),
     };
-    addOutfit(outfit);
-    setOutfits(getOutfits());
+    const { error } = await addOutfit(outfit);
+    setSalvando(false);
+    if (error) {
+      setErro(error);
+      return;
+    }
+    await carregar();
     setNome("");
     setSecoesInput("");
     setSelecionadas([]);
@@ -52,7 +68,9 @@ export default function OutfitsPage() {
         <div>
           <p className="text-xs uppercase tracking-wide text-[var(--color-sage)]">Muse</p>
           <h1 className="font-[var(--font-fraunces)] text-2xl">Outfits</h1>
-          <p className="text-sm text-black/50">{outfits.length} looks salvos</p>
+          <p className="text-sm text-black/50">
+            {carregando ? "Carregando…" : `${outfits.length} looks salvos`}
+          </p>
         </div>
         <button
           onClick={() => setShowForm((v) => !v)}
@@ -112,16 +130,19 @@ export default function OutfitsPage() {
             )}
           </div>
 
+          {erro && <p className="text-sm text-red-600">Erro ao salvar: {erro}</p>}
+
           <button
             type="submit"
-            className="w-full rounded-full bg-[var(--color-terracota)] py-2.5 text-sm font-medium text-white"
+            disabled={salvando}
+            className="w-full rounded-full bg-[var(--color-terracota)] py-2.5 text-sm font-medium text-white disabled:opacity-60"
           >
-            Salvar look
+            {salvando ? "Salvando..." : "Salvar look"}
           </button>
         </form>
       )}
 
-      {secoesUnicas.length === 0 && (
+      {!carregando && secoesUnicas.length === 0 && (
         <p className="mt-16 text-center text-sm text-black/40">
           Nenhum look salvo ainda. Toque em &quot;Novo look&quot; pra criar o primeiro.
         </p>

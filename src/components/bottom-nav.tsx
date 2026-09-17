@@ -4,11 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const tabs = [
-  { href: "/", label: "Armário", icon: "👗" },
-  { href: "/outfits", label: "Outfits", icon: "✨" },
-  { href: "/adicionar", label: "", icon: "+", central: true },
-  { href: "/stylist", label: "Stylist IA", icon: "🤖" },
-  { href: "/perfil", label: "Perfil", icon: "👤" },
+  { href: "/", label: "Armário", icon: "fi-rr-clothes-hanger", iconActive: "fi-sr-clothes-hanger" },
+  { href: "/outfits", label: "Outfits", icon: "fi-rr-sparkles", iconActive: "fi-sr-sparkles" },
+  { href: "/adicionar", label: "", icon: "fi-sr-plus", central: true },
+  { href: "/stylist", label: "Stylist IA", icon: "fi-rr-robot", iconActive: "fi-sr-robot" },
+  { href: "/perfil", label: "Perfil", icon: "fi-rr-user", iconActive: "fi-sr-user" },
 ];
 
 export function BottomNav() {
@@ -26,9 +26,9 @@ export function BottomNav() {
                 key={tab.href}
                 href={tab.href}
                 aria-label="Adicionar peça"
-                className="-mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-terracota)] text-2xl text-white shadow-lg shadow-black/20"
+                className="-mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-terracota)] text-white shadow-lg shadow-black/20"
               >
-                {tab.icon}
+                <i className={`${tab.icon} text-xl`} aria-hidden="true" />
               </Link>
             );
           }
@@ -41,7 +41,7 @@ export function BottomNav() {
                 active ? "text-[var(--color-terracota)]" : "text-black/40"
               }`}
             >
-              <span className="text-lg">{tab.icon}</span>
+              <i className={`${active ? tab.iconActive : tab.icon} text-lg`} aria-hidden="true" />
               {tab.label}
             </Link>
           );

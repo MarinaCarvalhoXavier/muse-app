@@ -8,7 +8,7 @@ export function PieceCard({ piece }: { piece: Piece }) {
         style={{ backgroundColor: piece.cor }}
       >
         {piece.favorita && (
-          <span className="absolute left-2 top-2 text-sm text-white/90">★</span>
+          <i className="fi-sr-star absolute left-2 top-2 text-sm text-white/90" aria-hidden="true" />
         )}
       </div>
       <div className="p-2">

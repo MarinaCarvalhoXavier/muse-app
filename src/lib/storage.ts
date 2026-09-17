@@ -1,40 +1,167 @@
-"use client";
+import { supabase } from "./supabase";
+import { Estacao, Ocasiao, Outfit, Piece, Tipo } from "./types";
 
-import { Outfit, Piece } from "./types";
-import { mockPieces } from "./mock-data";
+// ---------------------------------------------------------------------------
+// Peças e looks — persistidos no Supabase
+// ---------------------------------------------------------------------------
 
-const PIECES_KEY = "muse:pieces";
-const OUTFITS_KEY = "muse:outfits";
+type PieceRow = {
+  id: string;
+  tipo: string;
+  ocasioes: string[];
+  cor: string;
+  estacoes: string[];
+  favorita: boolean;
+  marca: string | null;
+  notas: string | null;
+  estampa: string | null;
+  foto_url: string | null;
+  criada_em: string;
+};
 
-function read<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
+type OutfitRow = {
+  id: string;
+  nome: string;
+  peca_ids: string[];
+  secoes: string[];
+  criado_em: string;
+};
+
+function rowToPiece(row: PieceRow): Piece {
+  return {
+    id: row.id,
+    tipo: row.tipo,
+    ocasioes: row.ocasioes ?? [],
+    cor: row.cor,
+    estacoes: (row.estacoes ?? []) as Estacao[],
+    favorita: row.favorita,
+    marca: row.marca ?? undefined,
+    notas: row.notas ?? undefined,
+    estampa: row.estampa ?? undefined,
+    criadaEm: row.criada_em,
+  };
+}
+
+function rowToOutfit(row: OutfitRow): Outfit {
+  return {
+    id: row.id,
+    nome: row.nome,
+    pecaIds: row.peca_ids ?? [],
+    secoes: row.secoes ?? [],
+    criadoEm: row.criado_em,
+  };
+}
+
+export async function getPieces(): Promise<Piece[]> {
+  const { data, error } = await supabase
+    .from("pieces")
+    .select("*")
+    .order("criada_em", { ascending: false });
+
+  if (error) {
+    console.error("Erro ao buscar peças:", error.message);
+    return [];
+  }
+  return (data as PieceRow[]).map(rowToPiece);
+}
+
+export async function addPiece(piece: Piece): Promise<{ error?: string }> {
+  const { error } = await supabase.from("pieces").insert({
+    id: piece.id,
+    tipo: piece.tipo,
+    ocasioes: piece.ocasioes,
+    cor: piece.cor,
+    estacoes: piece.estacoes,
+    favorita: piece.favorita,
+    marca: piece.marca ?? null,
+    notas: piece.notas ?? null,
+    estampa: piece.estampa ?? null,
+    criada_em: piece.criadaEm,
+  });
+
+  if (error) {
+    console.error("Erro ao salvar peça:", error.message);
+    return { error: error.message };
+  }
+  return {};
+}
+
+export async function getOutfits(): Promise<Outfit[]> {
+  const { data, error } = await supabase
+    .from("outfits")
+    .select("*")
+    .order("criado_em", { ascending: false });
+
+  if (error) {
+    console.error("Erro ao buscar outfits:", error.message);
+    return [];
+  }
+  return (data as OutfitRow[]).map(rowToOutfit);
+}
+
+export async function addOutfit(outfit: Outfit): Promise<{ error?: string }> {
+  const { error } = await supabase.from("outfits").insert({
+    id: outfit.id,
+    nome: outfit.nome,
+    peca_ids: outfit.pecaIds,
+    secoes: outfit.secoes,
+    criado_em: outfit.criadoEm,
+  });
+
+  if (error) {
+    console.error("Erro ao salvar outfit:", error.message);
+    return { error: error.message };
+  }
+  return {};
+}
+
+// ---------------------------------------------------------------------------
+// Listas personalizadas (tipos, ocasiões, cores criados por você) —
+// preferências leves, guardadas no navegador. Não são dados do guarda-roupa
+// em si, então continuam no localStorage mesmo depois do Supabase entrar.
+// ---------------------------------------------------------------------------
+
+const CUSTOM_TIPOS_KEY = "muse:custom-tipos";
+const CUSTOM_OCASIOES_KEY = "muse:custom-ocasioes";
+const CUSTOM_CORES_KEY = "muse:custom-cores";
+
+function readList(key: string): string[] {
+  if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
+    return raw ? (JSON.parse(raw) as string[]) : [];
   } catch {
-    return fallback;
+    return [];
   }
 }
 
-function write<T>(key: string, value: T) {
+function appendToList(key: string, value: string) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(key, JSON.stringify(value));
+  const current = readList(key);
+  if (current.includes(value)) return;
+  window.localStorage.setItem(key, JSON.stringify([...current, value]));
 }
 
-export function getPieces(): Piece[] {
-  return read<Piece[]>(PIECES_KEY, mockPieces);
+export function getCustomTipos(): Tipo[] {
+  return readList(CUSTOM_TIPOS_KEY);
 }
 
-export function addPiece(piece: Piece) {
-  const pieces = getPieces();
-  write(PIECES_KEY, [piece, ...pieces]);
+export function addCustomTipo(tipo: Tipo) {
+  appendToList(CUSTOM_TIPOS_KEY, tipo);
 }
 
-export function getOutfits(): Outfit[] {
-  return read<Outfit[]>(OUTFITS_KEY, []);
+export function getCustomOcasioes(): Ocasiao[] {
+  return readList(CUSTOM_OCASIOES_KEY);
 }
 
-export function addOutfit(outfit: Outfit) {
-  const outfits = getOutfits();
-  write(OUTFITS_KEY, [outfit, ...outfits]);
+export function addCustomOcasiao(ocasiao: Ocasiao) {
+  appendToList(CUSTOM_OCASIOES_KEY, ocasiao);
+}
+
+export function getCustomCores(): string[] {
+  return readList(CUSTOM_CORES_KEY);
+}
+
+export function addCustomCor(cor: string) {
+  appendToList(CUSTOM_CORES_KEY, cor);
 }

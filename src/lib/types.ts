@@ -1,15 +1,13 @@
-export type Tipo = "Blusas" | "Calças" | "Sapatos" | "Acessórios";
-export type Ocasiao = "Casual" | "Trabalho" | "Festa chique" | "Balada eletrônica";
-export type Estacao = "Verão" | "Inverno" | "Outono" | "Primavera";
-export type Clima = "Frio" | "Sol" | "Chuva";
+export type Tipo = string;
+export type Ocasiao = string;
+export type Estacao = "Verão" | "Inverno" | "Outono" | "Primavera" | "Chuva";
 
 export interface Piece {
   id: string;
   tipo: Tipo;
   ocasioes: Ocasiao[];
   cor: string;
-  estacao: Estacao;
-  clima: Clima;
+  estacoes: Estacao[];
   favorita: boolean;
   marca?: string;
   notas?: string;

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./uicons-regular-rounded.css";
+import "./uicons-solid-rounded.css";
 import { BottomNav } from "@/components/bottom-nav";
 
 export const metadata: Metadata = {

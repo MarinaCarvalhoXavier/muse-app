@@ -8,8 +8,10 @@ export default function PerfilPage() {
   const [totalOutfits, setTotalOutfits] = useState(0);
 
   useEffect(() => {
-    setTotalPecas(getPieces().length);
-    setTotalOutfits(getOutfits().length);
+    Promise.all([getPieces(), getOutfits()]).then(([pecas, outfits]) => {
+      setTotalPecas(pecas.length);
+      setTotalOutfits(outfits.length);
+    });
   }, []);
 
   return (
@@ -33,6 +35,18 @@ export default function PerfilPage() {
       <p className="text-sm text-black/40">
         Esta tela ainda é a menos definida do projeto — configurações e o
         destaque de peças esquecidas entram nas próximas versões.
+      </p>
+
+      <p className="mt-16 text-center text-[11px] text-black/30">
+        Uicons by{" "}
+        <a
+          href="https://www.flaticon.com/uicons"
+          target="_blank"
+          rel="noreferrer"
+          className="underline"
+        >
+          Flaticon
+        </a>
       </p>
     </main>
   );
