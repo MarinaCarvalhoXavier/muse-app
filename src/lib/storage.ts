@@ -65,6 +65,20 @@ export async function getPieces(): Promise<Piece[]> {
   return (data as PieceRow[]).map(rowToPiece);
 }
 
+export async function getPieceById(id: string): Promise<Piece | null> {
+  const { data, error } = await supabase
+    .from("pieces")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error || !data) {
+    if (error) console.error("Erro ao buscar peça:", error.message);
+    return null;
+  }
+  return rowToPiece(data as PieceRow);
+}
+
 export async function addPiece(piece: Piece): Promise<{ error?: string }> {
   const { error } = await supabase.from("pieces").insert({
     id: piece.id,
