@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+:root {
+  --font-fraunces: "Fraunces", ui-serif, serif;
+  --font-manrope: "Manrope", ui-sans-serif, sans-serif;
+}
+
+@theme {
+  --font-sans: var(--font-manrope);
+  --color-terracota: #C1694A;
+  --color-sage: #5C7A54;
+  --color-ink: #262220;
+  --color-paper: #FAF7F4;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+}
