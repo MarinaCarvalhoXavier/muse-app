@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Estacao, Ocasiao, Piece, Tipo } from "@/lib/types";
 import { generateId } from "@/lib/id";
@@ -76,7 +76,6 @@ export default function AdicionarPecaPage() {
     return mapa;
   });
   const [ocasioes, setOcasioes] = useState<Ocasiao[]>([]);
-  const [mostrarMaisOcasioes, setMostrarMaisOcasioes] = useState(false);
   const [cor, setCor] = useState(CORES_PADRAO[0]);
   const [estacoes, setEstacoes] = useState<Estacao[]>([]);
   const [favorita, setFavorita] = useState(false);
@@ -95,11 +94,6 @@ export default function AdicionarPecaPage() {
   function toggleOcasiao(o: Ocasiao) {
     setOcasioes((prev) => (prev.includes(o) ? prev.filter((x) => x !== o) : [...prev, o]));
   }
-
-  // Ocasiões padrão + qualquer uma já marcada ficam sempre visíveis. As
-  // outras (criadas por você antes) ficam escondidas atrás do "+ mais".
-  const ocasioesVisiveis = ocasioesOpcoes.filter((o) => OCASIOES_PADRAO.includes(o) || ocasioes.includes(o));
-  const ocasioesEscondidas = ocasioesOpcoes.filter((o) => !OCASIOES_PADRAO.includes(o) && !ocasioes.includes(o));
 
   function toggleEstacao(e: Estacao) {
     setEstacoes((prev) => (prev.includes(e) ? prev.filter((x) => x !== e) : [...prev, e]));
@@ -553,38 +547,35 @@ export default function AdicionarPecaPage() {
         </div>
 
         <Field label="Tipo">
-          <ChipGroup options={tipos} selected={[tipo]} onToggle={(o) => selecionarTipo(o)} />
-          <AddChip placeholder="Novo tipo" onAdd={handleNovoTipo} />
+          <CampoChips
+            options={tipos}
+            selected={[tipo]}
+            onToggle={(o) => selecionarTipo(o)}
+            addPlaceholder="Novo tipo"
+            onAdd={handleNovoTipo}
+          />
         </Field>
 
         {(SUBTIPOS_PADRAO[tipo] || customSubtipos[tipo]) && (
-          <Field label={`Qual tipo de ${tipo.toLowerCase()}? (pode marcar mais de um)`}>
-            <ChipGroup
+          <Field label="Subtipo">
+            <CampoChips
               options={[...(SUBTIPOS_PADRAO[tipo] ?? []), ...(customSubtipos[tipo] ?? [])]}
               selected={subtipos}
               onToggle={toggleSubtipo}
+              addPlaceholder="Novo subtipo"
+              onAdd={(nome) => handleNovoSubtipo(nome)}
             />
-            <AddChip placeholder="Novo subtipo" onAdd={(nome) => handleNovoSubtipo(nome)} />
           </Field>
         )}
 
         <Field label="Ocasião">
-          <ChipGroup options={ocasioesVisiveis} selected={ocasioes} onToggle={toggleOcasiao} />
-          {ocasioesEscondidas.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setMostrarMaisOcasioes((v) => !v)}
-              className="mt-2 text-sm font-medium text-[var(--color-sage)]"
-            >
-              {mostrarMaisOcasioes ? "− ver menos" : `+ mais (${ocasioesEscondidas.length})`}
-            </button>
-          )}
-          {mostrarMaisOcasioes && ocasioesEscondidas.length > 0 && (
-            <div className="mt-2">
-              <ChipGroup options={ocasioesEscondidas} selected={ocasioes} onToggle={toggleOcasiao} />
-            </div>
-          )}
-          <AddChip placeholder="Nova ocasião" onAdd={handleNovaOcasiao} />
+          <CampoChips
+            options={ocasioesOpcoes}
+            selected={ocasioes}
+            onToggle={toggleOcasiao}
+            addPlaceholder="Nova ocasião"
+            onAdd={handleNovaOcasiao}
+          />
         </Field>
 
         <Field label="Cor">
@@ -690,6 +681,73 @@ function TextField({
   );
 }
 
+// Altura aproximada de 3 linhas de chips (chip ~34px + 8px de espaço entre
+// linhas). Usado pra limitar Tipo, Subtipo e Ocasião a no máximo 3 linhas,
+// com um "+ mais" pra revelar o resto quando não cabe.
+const ALTURA_TRES_LINHAS = 120;
+
+function CampoChips({
+  options,
+  selected,
+  onToggle,
+  addPlaceholder,
+  onAdd,
+}: {
+  options: string[];
+  selected: string[];
+  onToggle: (option: string) => void;
+  addPlaceholder: string;
+  onAdd: (value: string) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [passaDe3Linhas, setPassaDe3Linhas] = useState(false);
+  const [expandido, setExpandido] = useState(false);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    setPassaDe3Linhas(el.scrollHeight > ALTURA_TRES_LINHAS + 2);
+  }, [options, selected]);
+
+  return (
+    <div>
+      <div
+        ref={containerRef}
+        className="flex flex-wrap gap-2 overflow-hidden"
+        style={{ maxHeight: expandido ? undefined : ALTURA_TRES_LINHAS }}
+      >
+        {options.map((option) => {
+          const active = selected.includes(option);
+          return (
+            <button
+              type="button"
+              key={option}
+              onClick={() => onToggle(option)}
+              className={`rounded-full border px-3 py-1.5 text-sm ${
+                active
+                  ? "border-[var(--color-terracota)] bg-[var(--color-terracota)]/10 text-[var(--color-terracota)]"
+                  : "border-black/10 text-black/60"
+              }`}
+            >
+              {option}
+            </button>
+          );
+        })}
+        <AddChipInline placeholder={addPlaceholder} onAdd={onAdd} onAbrir={() => setExpandido(true)} />
+      </div>
+      {passaDe3Linhas && (
+        <button
+          type="button"
+          onClick={() => setExpandido((v) => !v)}
+          className="mt-2 text-sm font-medium text-[var(--color-sage)]"
+        >
+          {expandido ? "− ver menos" : "+ mais"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function ChipGroup({
   options,
   selected,
@@ -722,9 +780,22 @@ function ChipGroup({
   );
 }
 
-function AddChip({ placeholder, onAdd }: { placeholder: string; onAdd: (value: string) => void }) {
+function AddChipInline({
+  placeholder,
+  onAdd,
+  onAbrir,
+}: {
+  placeholder: string;
+  onAdd: (value: string) => void;
+  onAbrir?: () => void;
+}) {
   const [aberto, setAberto] = useState(false);
   const [valor, setValor] = useState("");
+
+  function abrir() {
+    setAberto(true);
+    onAbrir?.();
+  }
 
   function confirmar() {
     onAdd(valor);
@@ -734,7 +805,7 @@ function AddChip({ placeholder, onAdd }: { placeholder: string; onAdd: (value: s
 
   if (aberto) {
     return (
-      <div className="mt-2 flex items-center gap-2">
+      <div className="flex items-center gap-2">
         <input
           autoFocus
           value={valor}
@@ -747,7 +818,7 @@ function AddChip({ placeholder, onAdd }: { placeholder: string; onAdd: (value: s
             if (e.key === "Escape") setAberto(false);
           }}
           placeholder={placeholder}
-          className="flex-1 rounded-full border border-black/10 px-3 py-1.5 text-sm"
+          className="rounded-full border border-black/10 px-3 py-1.5 text-sm"
         />
         <button
           type="button"
@@ -772,8 +843,8 @@ function AddChip({ placeholder, onAdd }: { placeholder: string; onAdd: (value: s
   return (
     <button
       type="button"
-      onClick={() => setAberto(true)}
-      className="mt-2 flex items-center gap-1 rounded-full border border-dashed border-black/20 px-3 py-1.5 text-sm text-black/50"
+      onClick={abrir}
+      className="flex items-center gap-1 rounded-full border border-dashed border-black/20 px-3 py-1.5 text-sm text-black/50"
     >
       <i className="fi-rr-plus-small text-xs" aria-hidden="true" />
       Adicionar
