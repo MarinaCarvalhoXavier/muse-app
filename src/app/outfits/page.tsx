@@ -66,7 +66,7 @@ export default function OutfitsPage() {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     key={item.id}
-                    src={peca.fotoUrl}
+                    src={item.fotoSemFundoUrl ?? peca.fotoUrl}
                     alt=""
                     className="absolute"
                     style={{ left: `${item.x}%`, top: `${item.y}%`, width: `${item.largura}%` }}

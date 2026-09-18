@@ -18,6 +18,8 @@ export function OutfitCanvas({
   const canvasRef = useRef<HTMLDivElement>(null);
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [arrastando, setArrastando] = useState<{ pecaId: string; x: number; y: number } | null>(null);
+  const [removendoFundoId, setRemovendoFundoId] = useState<string | null>(null);
+  const [erroRemoverFundo, setErroRemoverFundo] = useState<string | null>(null);
 
   const pecasNoCanvas = new Set(itens.map((i) => i.pecaId));
   const pecasDisponiveis = pieces.filter((p) => p.fotoUrl);
@@ -133,6 +135,32 @@ export function OutfitCanvas({
     setSelecionadoId(null);
   }
 
+  async function removerFundoDoItem(item: OutfitItem) {
+    const peca = pieces.find((p) => p.id === item.pecaId);
+    const fotoAtual = item.fotoSemFundoUrl ?? peca?.fotoUrl;
+    if (!fotoAtual) return;
+    setRemovendoFundoId(item.id);
+    setErroRemoverFundo(null);
+    try {
+      const res = await fetch("/api/remover-fundo-item", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fotoUrl: fotoAtual }),
+      });
+      const dados = await res.json().catch(() => null);
+      if (!res.ok || !dados?.url) {
+        setErroRemoverFundo(dados?.error || "Não consegui remover o fundo agora.");
+        return;
+      }
+      onChangeItem(item.id, { fotoSemFundoUrl: dados.url as string });
+    } catch (err) {
+      console.error("Erro ao remover fundo do item:", err);
+      setErroRemoverFundo("Não consegui remover o fundo agora.");
+    } finally {
+      setRemovendoFundoId(null);
+    }
+  }
+
   const itemSelecionado = itens.find((i) => i.id === selecionadoId) ?? null;
   const pecaArrastando = arrastando ? pieces.find((p) => p.id === arrastando.pecaId) : null;
 
@@ -147,6 +175,7 @@ export function OutfitCanvas({
           const peca = pieces.find((p) => p.id === item.pecaId);
           if (!peca?.fotoUrl) return null;
           const selecionado = item.id === selecionadoId;
+          const fotoExibida = item.fotoSemFundoUrl ?? peca.fotoUrl;
           return (
             <div
               key={item.id}
@@ -161,7 +190,7 @@ export function OutfitCanvas({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={peca.fotoUrl}
+                  src={fotoExibida}
                   alt={peca.tipo}
                   className="pointer-events-none w-full select-none"
                   draggable={false}
@@ -187,7 +216,19 @@ export function OutfitCanvas({
       </div>
 
       {itemSelecionado && (
-        <div className="mt-3 flex items-center justify-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => removerFundoDoItem(itemSelecionado)}
+            disabled={removendoFundoId === itemSelecionado.id || !!itemSelecionado.fotoSemFundoUrl}
+            className="rounded-full border border-[var(--color-sage)] px-3 py-1.5 text-xs text-[var(--color-sage)] disabled:opacity-50"
+          >
+            {removendoFundoId === itemSelecionado.id
+              ? "Removendo fundo…"
+              : itemSelecionado.fotoSemFundoUrl
+              ? "Fundo já removido"
+              : "Remover fundo"}
+          </button>
           <button
             type="button"
             onClick={() => trazerParaFrente(itemSelecionado.id)}
@@ -211,6 +252,7 @@ export function OutfitCanvas({
           </button>
         </div>
       )}
+      {erroRemoverFundo && <p className="mt-2 text-center text-xs text-red-600">{erroRemoverFundo}</p>}
 
       <p className="mb-2 mt-6 text-xs text-black/50">Arraste uma peça para o canvas</p>
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">

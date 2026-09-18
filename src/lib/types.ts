@@ -23,6 +23,7 @@ export interface OutfitItem {
   x: number; // % da largura do canvas (posição do canto superior esquerdo)
   y: number; // % da altura do canvas
   largura: number; // % da largura do canvas
+  fotoSemFundoUrl?: string; // versão dessa foto com fundo removido, só pra esse look
 }
 
 export interface Outfit {

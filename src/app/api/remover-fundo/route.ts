@@ -8,9 +8,8 @@ const PROMPT =
   "curves, and natural tension lines while keeping the wearer fully invisible. " +
   "Only the product should appear, floating. Use the most flattering perspective and " +
   "make the item look new with very sharp and clean resolution. Show only the main " +
-  "subject with the background fully removed — transparent, with no white box, frame, " +
-  "shadow-plate or backdrop of any kind around it. If the original product is flat, add " +
-  "natural 3D structure so it looks worn while keeping the wearer invisible. Remove wrinkles if any.";
+  "subject on a plain white background. If the original product is flat, add natural " +
+  "3D structure so it looks worn while keeping the wearer invisible. Remove wrinkles if any.";
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.PHOTOROOM_API_KEY;
@@ -36,72 +35,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Nenhuma imagem enviada." }, { status: 400 });
   }
 
-  // Passo 1: a Photoroom "reimagina" a peça com volume (efeito vitrine).
-  // Essa etapa generativa devolve a cena inteira que ela criou, fundo
-  // incluso — por isso não dá pra confiar em nenhum parâmetro de fundo
-  // nessa mesma chamada (testamos e isso desliga o efeito vitrine).
-  const editForm = new FormData();
-  editForm.append("imageFile", file, "peca.jpg");
-  editForm.append("editWithAI.mode", "ai.auto");
-  editForm.append("editWithAI.prompt", PROMPT);
+  const photoroomForm = new FormData();
+  photoroomForm.append("imageFile", file, "peca.jpg");
+  photoroomForm.append("editWithAI.mode", "ai.auto");
+  photoroomForm.append("editWithAI.prompt", PROMPT);
 
-  let editRes: Response;
+  let photoroomRes: Response;
   try {
-    editRes = await fetch("https://image-api.photoroom.com/v2/edit", {
+    photoroomRes = await fetch("https://image-api.photoroom.com/v2/edit", {
       method: "POST",
       headers: {
         "x-api-key": apiKey,
       },
-      body: editForm,
+      body: photoroomForm,
     });
   } catch (err) {
-    console.error("Erro de rede ao chamar Photoroom (edição):", err);
+    console.error("Erro de rede ao chamar Photoroom:", err);
     return NextResponse.json({ error: "Não foi possível falar com a Photoroom." }, { status: 502 });
   }
 
-  if (!editRes.ok) {
-    const texto = await editRes.text().catch(() => "");
-    console.error("Photoroom (edição) retornou erro:", editRes.status, texto);
+  if (!photoroomRes.ok) {
+    const texto = await photoroomRes.text().catch(() => "");
+    console.error("Photoroom retornou erro:", photoroomRes.status, texto);
     return NextResponse.json(
-      { error: `Photoroom retornou erro ${editRes.status}. ${texto}`.trim() },
+      { error: `Photoroom retornou erro ${photoroomRes.status}. ${texto}`.trim() },
       { status: 502 }
     );
   }
 
-  const imagemComVolume = Buffer.from(await editRes.arrayBuffer());
-
-  // Passo 2: manda o resultado pro serviço clássico de remoção de fundo da
-  // própria Photoroom (v1/segment), separado da edição por IA, pra tirar de
-  // vez o fundo que a IA "pintou" no passo 1.
-  const segmentForm = new FormData();
-  segmentForm.append("image_file", new Blob([imagemComVolume], { type: "image/png" }), "peca-vitrine.png");
-  segmentForm.append("format", "png");
-  segmentForm.append("channels", "rgba");
-
-  let segmentRes: Response;
-  try {
-    segmentRes = await fetch("https://sdk.photoroom.com/v1/segment", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-      },
-      body: segmentForm,
-    });
-  } catch (err) {
-    console.error("Erro de rede ao chamar Photoroom (remoção de fundo):", err);
-    return NextResponse.json({ error: "Não foi possível remover o fundo da foto." }, { status: 502 });
-  }
-
-  if (!segmentRes.ok) {
-    const texto = await segmentRes.text().catch(() => "");
-    console.error("Photoroom (remoção de fundo) retornou erro:", segmentRes.status, texto);
-    return NextResponse.json(
-      { error: `Photoroom retornou erro ${segmentRes.status}. ${texto}`.trim() },
-      { status: 502 }
-    );
-  }
-
-  const imagemBuffer = Buffer.from(await segmentRes.arrayBuffer());
+  const imagemBuffer = Buffer.from(await photoroomRes.arrayBuffer());
   const supabase = createClient(supabaseUrl, supabaseKey);
   const nomeArquivo = `${crypto.randomUUID()}.png`;
 
