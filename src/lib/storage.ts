@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { Estacao, Ocasiao, Outfit, OutfitItem, Piece, Tipo } from "./types";
+import { Ocasiao, Outfit, OutfitItem, Peso, Piece, Tipo } from "./types";
 
 // ---------------------------------------------------------------------------
 // Peças e looks — persistidos no Supabase
@@ -11,7 +11,7 @@ type PieceRow = {
   subtipos: string[] | null;
   ocasioes: string[];
   cor: string;
-  estacoes: string[];
+  peso: string | null;
   favorita: boolean;
   marca: string | null;
   notas: string | null;
@@ -34,7 +34,7 @@ function rowToPiece(row: PieceRow): Piece {
     subtipos: row.subtipos ?? [],
     ocasioes: row.ocasioes ?? [],
     cor: row.cor,
-    estacoes: (row.estacoes ?? []) as Estacao[],
+    peso: (row.peso as Peso | null) ?? undefined,
     favorita: row.favorita,
     marca: row.marca ?? undefined,
     notas: row.notas ?? undefined,
@@ -87,7 +87,7 @@ export async function addPiece(piece: Piece): Promise<{ error?: string }> {
     subtipos: piece.subtipos ?? [],
     ocasioes: piece.ocasioes,
     cor: piece.cor,
-    estacoes: piece.estacoes,
+    peso: piece.peso ?? null,
     favorita: piece.favorita,
     marca: piece.marca ?? null,
     notas: piece.notas ?? null,

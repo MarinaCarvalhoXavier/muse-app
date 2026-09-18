@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Estacao, Ocasiao, Piece, Tipo } from "@/lib/types";
+import { Ocasiao, Peso, Piece, Tipo } from "@/lib/types";
 import { generateId } from "@/lib/id";
 import { supabase } from "@/lib/supabase";
 import {
@@ -40,7 +40,7 @@ const SUBTIPOS_PADRAO: Record<string, string[]> = {
 };
 
 const OCASIOES_PADRAO: Ocasiao[] = ["Casual", "Trabalho", "Festa chique", "Balada eletrônica"];
-const ESTACOES: Estacao[] = ["Verão", "Inverno", "Outono", "Primavera", "Chuva"];
+const PESOS: Peso[] = ["Leve", "Neutra", "Quente"];
 // Paleta enxuta de cores "guarda-chuva" — no MVP cada peça usa a cor básica
 // mais próxima (ex: azul bebê e azul marinho caem ambos em "Azul"). Dá pra
 // refinar isso depois; por enquanto evita a lista de cores crescer sem fim.
@@ -77,7 +77,7 @@ export default function AdicionarPecaPage() {
   });
   const [ocasioes, setOcasioes] = useState<Ocasiao[]>([]);
   const [cor, setCor] = useState(CORES_PADRAO[0]);
-  const [estacoes, setEstacoes] = useState<Estacao[]>([]);
+  const [peso, setPeso] = useState<Peso | null>(null);
   const [favorita, setFavorita] = useState(false);
   const [detalhesAbertos, setDetalhesAbertos] = useState(false);
   const [marca, setMarca] = useState("");
@@ -95,8 +95,8 @@ export default function AdicionarPecaPage() {
     setOcasioes((prev) => (prev.includes(o) ? prev.filter((x) => x !== o) : [...prev, o]));
   }
 
-  function toggleEstacao(e: Estacao) {
-    setEstacoes((prev) => (prev.includes(e) ? prev.filter((x) => x !== e) : [...prev, e]));
+  function selecionarPeso(p: Peso) {
+    setPeso((prev) => (prev === p ? null : p));
   }
 
   function selecionarTipo(novoTipo: Tipo) {
@@ -391,8 +391,8 @@ export default function AdicionarPecaPage() {
         }
       }
 
-      if (Array.isArray(sugestao.estacoes) && sugestao.estacoes.length > 0) {
-        setEstacoes((prev) => Array.from(new Set([...prev, ...(sugestao.estacoes as Estacao[])])));
+      if (typeof sugestao.peso === "string" && PESOS.includes(sugestao.peso as Peso)) {
+        setPeso(sugestao.peso as Peso);
       }
     } catch (err) {
       console.error("Erro ao sugerir tags:", err);
@@ -467,7 +467,7 @@ export default function AdicionarPecaPage() {
       subtipos: subtipos.length > 0 ? subtipos : undefined,
       ocasioes,
       cor,
-      estacoes,
+      peso: peso ?? undefined,
       favorita,
       marca: marca || undefined,
       notas: notas || undefined,
@@ -536,7 +536,7 @@ export default function AdicionarPecaPage() {
           {sugerindoTags && (
             <p className="mt-2 flex items-center gap-1.5 text-sm text-[var(--color-sage)]">
               <i className="fi-rr-sparkles text-xs" aria-hidden="true" />
-              Sugerindo tipo, ocasião e estação com IA…
+              Sugerindo tipo, ocasião e peso com IA…
             </p>
           )}
           {erroSugestao && (
@@ -605,8 +605,26 @@ export default function AdicionarPecaPage() {
           </div>
         </Field>
 
-        <Field label="Estação">
-          <ChipGroup options={ESTACOES} selected={estacoes} onToggle={(o) => toggleEstacao(o as Estacao)} />
+        <Field label="Peso da peça">
+          <div className="flex flex-wrap gap-2">
+            {PESOS.map((p) => {
+              const ativo = peso === p;
+              return (
+                <button
+                  type="button"
+                  key={p}
+                  onClick={() => selecionarPeso(p)}
+                  className={`rounded-full border px-3 py-1.5 text-sm ${
+                    ativo
+                      ? "border-[var(--color-terracota)] bg-[var(--color-terracota)]/10 text-[var(--color-terracota)]"
+                      : "border-black/10 text-black/60"
+                  }`}
+                >
+                  {p}
+                </button>
+              );
+            })}
+          </div>
         </Field>
 
         <label className="flex items-center justify-between rounded-2xl border border-black/10 px-4 py-3">

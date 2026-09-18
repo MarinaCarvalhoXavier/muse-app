@@ -108,7 +108,7 @@ export default function DetalhePecaPage() {
 
           <div className="space-y-4">
             <DetalheItem label="Ocasião" valor={piece.ocasioes.join(", ") || "Nenhuma"} />
-            <DetalheItem label="Estação" valor={piece.estacoes.join(", ") || "Nenhuma"} />
+            <DetalheItem label="Peso" valor={piece.peso || "Não definido"} />
             <DetalheItem label="Cor" valor={piece.cor} />
             {piece.marca && <DetalheItem label="Marca" valor={piece.marca} />}
             {piece.estampa && <DetalheItem label="Estampa" valor={piece.estampa} />}

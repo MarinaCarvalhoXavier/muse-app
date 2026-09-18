@@ -7,7 +7,7 @@ create table if not exists pieces (
   subtipos text[] not null default '{}',
   ocasioes text[] not null default '{}',
   cor text not null,
-  estacoes text[] not null default '{}',
+  peso text,
   favorita boolean not null default false,
   marca text,
   notas text,

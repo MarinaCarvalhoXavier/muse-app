@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const ESTACOES_VALIDAS = ["Verão", "Inverno", "Outono", "Primavera", "Chuva"];
+const PESOS_VALIDOS = ["Leve", "Neutra", "Quente"];
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       `${subtiposTexto || "  (nenhum subtipo ainda)"}\n\n` +
       `Ocasiões já usadas por essa pessoa: ${ocasioes.length ? ocasioes.join(", ") : "nenhuma ainda"}.\n\n` +
       "Responda APENAS com um JSON válido, sem nenhum texto antes ou depois, no formato:\n" +
-      '{"tipo": "string", "subtipos": ["string", ...], "ocasioes": ["string", ...], "estacoes": ["string", ...]}\n\n' +
+      '{"tipo": "string", "subtipos": ["string", ...], "ocasioes": ["string", ...], "peso": "string"}\n\n' +
       "Regras:\n" +
       "- tipo: escolha OBRIGATORIAMENTE uma das categorias principais listadas acima (nunca invente uma nova aqui).\n" +
       "- subtipos: uma LISTA com o(s) detalhe(s) da peça dentro dessa categoria (ex: Regata, Cropped, " +
@@ -57,9 +57,10 @@ export async function POST(req: NextRequest) {
       "curto, em português. Se não der pra identificar nenhum, retorne uma lista vazia.\n" +
       "- ocasioes: prefira reaproveitar ocasiões já usadas quando fizer sentido. Pode sugerir mais de uma, " +
       "ou uma nova se nenhuma existente combinar. Nunca deixe vazio se for possível inferir algo razoável.\n" +
-      `- estacoes: escolha somente entre estes valores exatos: ${ESTACOES_VALIDAS.join(", ")}. ` +
-      "Pode escolher mais de um (ex: uma blusa leve pode servir pra Verão e Primavera). Se a " +
-      "peça for atemporal (ex: um acessório básico), pode sugerir todas.";
+      `- peso: escolha somente um destes valores exatos: ${PESOS_VALIDOS.join(", ")}. ` +
+      "\"Leve\" pra tecidos finos/arejados (linho, viscose, regata), \"Quente\" pra peças que esquentam " +
+      "mais (moletom, jaqueta, tricô grosso, casaco), e \"Neutra\" pro meio-termo ou quando não der " +
+      "pra saber pelo tecido (ex: acessórios, bolsas, sapatos).";
 
     const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -123,15 +124,14 @@ export async function POST(req: NextRequest) {
     const ocasioesSugeridas = Array.isArray(sugestao.ocasioes)
       ? sugestao.ocasioes.filter((o: unknown): o is string => typeof o === "string" && o.trim().length > 0)
       : [];
-    const estacoesSugeridas = Array.isArray(sugestao.estacoes)
-      ? sugestao.estacoes.filter((e: unknown): e is string => ESTACOES_VALIDAS.includes(e as string))
-      : [];
+    const pesoSugerido =
+      typeof sugestao.peso === "string" && PESOS_VALIDOS.includes(sugestao.peso) ? sugestao.peso : null;
 
     return NextResponse.json({
       tipo: tipoSugerido,
       subtipos: subtiposSugeridos,
       ocasioes: ocasioesSugeridas,
-      estacoes: estacoesSugeridas,
+      peso: pesoSugerido,
     });
   } catch (err) {
     console.error("Erro ao sugerir tags:", err);

@@ -1,6 +1,9 @@
 export type Tipo = string;
 export type Ocasiao = string;
-export type Estacao = "Verão" | "Inverno" | "Outono" | "Primavera" | "Chuva";
+// Em vez de estação do ano (que não faz muito sentido num clima que é
+// praticamente calor o ano todo, tipo Recife), classificamos pelo quanto
+// a peça "esquenta" — ajuda mais no dia a dia.
+export type Peso = "Leve" | "Neutra" | "Quente";
 
 export interface Piece {
   id: string;
@@ -8,7 +11,7 @@ export interface Piece {
   subtipos?: string[];
   ocasioes: Ocasiao[];
   cor: string;
-  estacoes: Estacao[];
+  peso?: Peso;
   favorita: boolean;
   marca?: string;
   notas?: string;

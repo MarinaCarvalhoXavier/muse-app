@@ -17,10 +17,10 @@ type FiltrosAvancados = {
   subtipos: string[];
   ocasioes: string[];
   cores: string[];
-  estacoes: string[];
+  pesos: string[];
 };
 
-const FILTROS_VAZIOS: FiltrosAvancados = { subtipos: [], ocasioes: [], cores: [], estacoes: [] };
+const FILTROS_VAZIOS: FiltrosAvancados = { subtipos: [], ocasioes: [], cores: [], pesos: [] };
 
 export default function ArmarioPage() {
   const [pieces, setPieces] = useState<Piece[]>([]);
@@ -61,8 +61,8 @@ export default function ArmarioPage() {
     () => Array.from(new Set(pieces.map((p) => p.cor))),
     [pieces]
   );
-  const estacoesDisponiveis = useMemo(
-    () => Array.from(new Set(pieces.flatMap((p) => p.estacoes))),
+  const pesosDisponiveis = useMemo(
+    () => Array.from(new Set(pieces.map((p) => p.peso).filter((p): p is NonNullable<typeof p> => !!p))),
     [pieces]
   );
 
@@ -103,8 +103,8 @@ export default function ArmarioPage() {
     if (filtrosAvancados.cores.length > 0) {
       if (!filtrosAvancados.cores.includes(p.cor)) return false;
     }
-    if (filtrosAvancados.estacoes.length > 0) {
-      if (!p.estacoes.some((e) => filtrosAvancados.estacoes.includes(e))) return false;
+    if (filtrosAvancados.pesos.length > 0) {
+      if (!p.peso || !filtrosAvancados.pesos.includes(p.peso)) return false;
     }
     return true;
   }
@@ -240,12 +240,12 @@ export default function ArmarioPage() {
                   onToggle={(v) => toggleFiltroAvancado("ocasioes", v)}
                 />
               )}
-              {estacoesDisponiveis.length > 0 && (
+              {pesosDisponiveis.length > 0 && (
                 <FiltroSecao
-                  titulo="Estação"
-                  opcoes={estacoesDisponiveis}
-                  selecionadas={filtrosAvancados.estacoes}
-                  onToggle={(v) => toggleFiltroAvancado("estacoes", v)}
+                  titulo="Peso"
+                  opcoes={pesosDisponiveis}
+                  selecionadas={filtrosAvancados.pesos}
+                  onToggle={(v) => toggleFiltroAvancado("pesos", v)}
                 />
               )}
               {coresDisponiveis.length > 0 && (
