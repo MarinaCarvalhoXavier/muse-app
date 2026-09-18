@@ -40,10 +40,11 @@ export async function POST(req: NextRequest) {
   photoroomForm.append("imageFile", file, "peca.jpg");
   photoroomForm.append("editWithAI.mode", "ai.auto");
   photoroomForm.append("editWithAI.prompt", PROMPT);
-  // Sem isso, o próprio texto do prompt acima pode fazer a IA "desenhar" um
-  // fundo branco sólido em vez de deixar transparente — daí o quadrado
-  // branco aparecendo atrás de cada peça quando duas se sobrepõem no canvas.
-  photoroomForm.append("background.color", "transparent");
+  // Não mandamos background.color aqui: por padrão a Photoroom já deixa o
+  // fundo transparente, e forçar esse parâmetro junto com editWithAI fez a
+  // IA pular o efeito de "vitrine" (volume/forma de vestido) e devolver só
+  // um recorte plano da peça. O fundo branco que aparecia antes era culpa
+  // só do texto do PROMPT acima, já corrigido.
 
   let photoroomRes: Response;
   try {
