@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { Estacao, Ocasiao, Outfit, Piece, Tipo } from "./types";
+import { Estacao, Ocasiao, Outfit, OutfitItem, Piece, Tipo } from "./types";
 
 // ---------------------------------------------------------------------------
 // Peças e looks — persistidos no Supabase
@@ -23,8 +23,7 @@ type PieceRow = {
 type OutfitRow = {
   id: string;
   nome: string;
-  peca_ids: string[];
-  secoes: string[];
+  itens: OutfitItem[] | null;
   criado_em: string;
 };
 
@@ -49,8 +48,7 @@ function rowToOutfit(row: OutfitRow): Outfit {
   return {
     id: row.id,
     nome: row.nome,
-    pecaIds: row.peca_ids ?? [],
-    secoes: row.secoes ?? [],
+    itens: row.itens ?? [],
     criadoEm: row.criado_em,
   };
 }
@@ -140,13 +138,51 @@ export async function addOutfit(outfit: Outfit): Promise<{ error?: string }> {
   const { error } = await supabase.from("outfits").insert({
     id: outfit.id,
     nome: outfit.nome,
-    peca_ids: outfit.pecaIds,
-    secoes: outfit.secoes,
+    itens: outfit.itens ?? [],
     criado_em: outfit.criadoEm,
   });
 
   if (error) {
     console.error("Erro ao salvar outfit:", error.message);
+    return { error: error.message };
+  }
+  return {};
+}
+
+export async function getOutfitById(id: string): Promise<Outfit | null> {
+  const { data, error } = await supabase
+    .from("outfits")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error || !data) {
+    if (error) console.error("Erro ao buscar outfit:", error.message);
+    return null;
+  }
+  return rowToOutfit(data as OutfitRow);
+}
+
+export async function updateOutfit(
+  id: string,
+  updates: { nome?: string; itens?: OutfitItem[] }
+): Promise<{ error?: string }> {
+  const payload: Record<string, unknown> = {};
+  if (updates.nome !== undefined) payload.nome = updates.nome;
+  if (updates.itens !== undefined) payload.itens = updates.itens;
+
+  const { error } = await supabase.from("outfits").update(payload).eq("id", id);
+  if (error) {
+    console.error("Erro ao atualizar outfit:", error.message);
+    return { error: error.message };
+  }
+  return {};
+}
+
+export async function deleteOutfit(id: string): Promise<{ error?: string }> {
+  const { error } = await supabase.from("outfits").delete().eq("id", id);
+  if (error) {
+    console.error("Erro ao excluir outfit:", error.message);
     return { error: error.message };
   }
   return {};

@@ -17,10 +17,17 @@ export interface Piece {
   criadaEm: string;
 }
 
+export interface OutfitItem {
+  id: string;
+  pecaId: string;
+  x: number; // % da largura do canvas (posição do canto superior esquerdo)
+  y: number; // % da altura do canvas
+  largura: number; // % da largura do canvas
+}
+
 export interface Outfit {
   id: string;
   nome: string;
-  pecaIds: string[];
-  secoes: string[];
+  itens: OutfitItem[];
   criadoEm: string;
 }

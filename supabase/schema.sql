@@ -19,8 +19,7 @@ create table if not exists pieces (
 create table if not exists outfits (
   id uuid primary key,
   nome text not null,
-  peca_ids uuid[] not null default '{}',
-  secoes text[] not null default '{}',
+  itens jsonb not null default '[]',
   criado_em timestamptz not null default now()
 );
 

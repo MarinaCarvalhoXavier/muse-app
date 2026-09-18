@@ -1,67 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Outfit, Piece } from "@/lib/types";
-import { generateId } from "@/lib/id";
-import { addOutfit, getOutfits, getPieces } from "@/lib/storage";
+import { getOutfits, getPieces } from "@/lib/storage";
 
 export default function OutfitsPage() {
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [carregando, setCarregando] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [nome, setNome] = useState("");
-  const [secoesInput, setSecoesInput] = useState("");
-  const [selecionadas, setSelecionadas] = useState<string[]>([]);
-  const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-
-  async function carregar() {
-    const [o, p] = await Promise.all([getOutfits(), getPieces()]);
-    setOutfits(o);
-    setPieces(p);
-    setCarregando(false);
-  }
 
   useEffect(() => {
-    carregar();
+    let ativo = true;
+    Promise.all([getOutfits(), getPieces()]).then(([o, p]) => {
+      if (!ativo) return;
+      setOutfits(o);
+      setPieces(p);
+      setCarregando(false);
+    });
+    return () => {
+      ativo = false;
+    };
   }, []);
 
-  function togglePeca(id: string) {
-    setSelecionadas((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  function pecaPorId(id: string) {
+    return pieces.find((p) => p.id === id);
   }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!nome || selecionadas.length === 0) return;
-    setSalvando(true);
-    setErro(null);
-    const outfit: Outfit = {
-      id: generateId(),
-      nome,
-      pecaIds: selecionadas,
-      secoes: secoesInput
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-      criadoEm: new Date().toISOString(),
-    };
-    const { error } = await addOutfit(outfit);
-    setSalvando(false);
-    if (error) {
-      setErro(error);
-      return;
-    }
-    await carregar();
-    setNome("");
-    setSecoesInput("");
-    setSelecionadas([]);
-    setShowForm(false);
-  }
-
-  const secoesUnicas = Array.from(
-    new Set(outfits.flatMap((o) => (o.secoes.length ? o.secoes : ["Sem categoria"])))
-  );
 
   return (
     <main className="px-4 pb-24 pt-8">
@@ -73,100 +37,50 @@ export default function OutfitsPage() {
             {carregando ? "Carregando…" : `${outfits.length} looks salvos`}
           </p>
         </div>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded-full border border-[var(--color-terracota)] px-3 py-1.5 text-sm text-[var(--color-terracota)]"
+        <Link
+          href="/outfits/novo"
+          className="shrink-0 rounded-full border border-[var(--color-terracota)] px-3 py-1.5 text-sm text-[var(--color-terracota)]"
         >
-          {showForm ? "Cancelar" : "Novo look"}
-        </button>
+          Novo look
+        </Link>
       </header>
 
-      {showForm && (
-        <form onSubmit={handleSubmit} className="mb-8 space-y-4 rounded-2xl border border-black/10 p-4">
-          <label className="block">
-            <span className="mb-1 block text-xs text-black/50">Nome do look</span>
-            <input
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              className="w-full rounded-xl border border-black/10 px-3 py-2 text-sm"
-              placeholder="Ex: Reunião de terça"
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block text-xs text-black/50">
-              Seções (separadas por vírgula — deixe vazio pra &quot;sem categoria&quot;)
-            </span>
-            <input
-              value={secoesInput}
-              onChange={(e) => setSecoesInput(e.target.value)}
-              className="w-full rounded-xl border border-black/10 px-3 py-2 text-sm"
-              placeholder="Ex: Trabalho, Casual"
-            />
-          </label>
-
-          <div>
-            <p className="mb-2 text-xs text-black/50">Peças do look</p>
-            <div className="flex flex-wrap gap-2">
-              {pieces.map((p) => {
-                const active = selecionadas.includes(p.id);
-                return (
-                  <button
-                    type="button"
-                    key={p.id}
-                    onClick={() => togglePeca(p.id)}
-                    className={`rounded-full border px-3 py-1.5 text-xs ${
-                      active
-                        ? "border-[var(--color-terracota)] bg-[var(--color-terracota)]/10 text-[var(--color-terracota)]"
-                        : "border-black/10 text-black/60"
-                    }`}
-                  >
-                    {p.tipo} · {p.cor}
-                  </button>
-                );
-              })}
-            </div>
-            {pieces.length === 0 && (
-              <p className="text-xs text-black/40">Cadastre peças no Armário primeiro.</p>
-            )}
-          </div>
-
-          {erro && <p className="text-sm text-red-600">Erro ao salvar: {erro}</p>}
-
-          <button
-            type="submit"
-            disabled={salvando}
-            className="w-full rounded-full bg-[var(--color-terracota)] py-2.5 text-sm font-medium text-white disabled:opacity-60"
-          >
-            {salvando ? "Salvando..." : "Salvar look"}
-          </button>
-        </form>
-      )}
-
-      {!carregando && secoesUnicas.length === 0 && (
+      {!carregando && outfits.length === 0 && (
         <p className="mt-16 text-center text-sm text-black/40">
           Nenhum look salvo ainda. Toque em &quot;Novo look&quot; pra criar o primeiro.
         </p>
       )}
 
-      {secoesUnicas.map((secao) => {
-        const looksDaSecao = outfits.filter((o) =>
-          secao === "Sem categoria" ? o.secoes.length === 0 : o.secoes.includes(secao)
-        );
-        return (
-          <section key={secao} className="mb-8">
-            <h2 className="mb-3 font-[var(--font-fraunces)] text-lg">{secao}</h2>
-            <div className="space-y-2">
-              {looksDaSecao.map((o) => (
-                <div key={o.id} className="rounded-2xl border border-black/5 bg-white p-3">
-                  <p className="text-sm font-medium">{o.nome}</p>
-                  <p className="text-xs text-black/40">{o.pecaIds.length} peças</p>
-                </div>
-              ))}
+      <div className="grid grid-cols-2 gap-3">
+        {outfits.map((o) => (
+          <Link
+            key={o.id}
+            href={`/outfits/${o.id}`}
+            className="overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition-transform active:scale-[0.98]"
+          >
+            <div className="relative aspect-[3/4] w-full overflow-hidden bg-black/5">
+              {o.itens.map((item) => {
+                const peca = pecaPorId(item.pecaId);
+                if (!peca?.fotoUrl) return null;
+                return (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={item.id}
+                    src={peca.fotoUrl}
+                    alt=""
+                    className="absolute"
+                    style={{ left: `${item.x}%`, top: `${item.y}%`, width: `${item.largura}%` }}
+                  />
+                );
+              })}
+              {o.itens.length === 0 && (
+                <p className="flex h-full items-center justify-center text-xs text-black/30">Look vazio</p>
+              )}
             </div>
-          </section>
-        );
-      })}
+            <p className="truncate px-3 py-2 text-sm font-medium">{o.nome}</p>
+          </Link>
+        ))}
+      </div>
     </main>
   );
 }
