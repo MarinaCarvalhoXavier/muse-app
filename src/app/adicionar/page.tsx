@@ -57,6 +57,7 @@ export default function AdicionarPecaPage() {
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const [processandoFoto, setProcessandoFoto] = useState(false);
   const [erroFoto, setErroFoto] = useState<string | null>(null);
+  const [sugerindoTags, setSugerindoTags] = useState(false);
 
   function toggleOcasiao(o: Ocasiao) {
     setOcasioes((prev) => (prev.includes(o) ? prev.filter((x) => x !== o) : [...prev, o]));
@@ -262,6 +263,45 @@ export default function AdicionarPecaPage() {
     }
   }
 
+  async function handleSugerirTags(url: string) {
+    setSugerindoTags(true);
+    try {
+      const res = await fetch("/api/sugerir-tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fotoUrl: url, tipos, ocasioes: ocasioesOpcoes }),
+      });
+      if (!res.ok) return;
+      const sugestao = await res.json();
+
+      if (sugestao.tipo) {
+        if (tipos.includes(sugestao.tipo)) {
+          setTipo(sugestao.tipo);
+        } else {
+          handleNovoTipo(sugestao.tipo);
+        }
+      }
+
+      if (Array.isArray(sugestao.ocasioes)) {
+        for (const o of sugestao.ocasioes as string[]) {
+          if (ocasioesOpcoes.includes(o)) {
+            setOcasioes((prev) => (prev.includes(o) ? prev : [...prev, o]));
+          } else {
+            handleNovaOcasiao(o);
+          }
+        }
+      }
+
+      if (Array.isArray(sugestao.estacoes) && sugestao.estacoes.length > 0) {
+        setEstacoes((prev) => Array.from(new Set([...prev, ...(sugestao.estacoes as Estacao[])])));
+      }
+    } catch (err) {
+      console.error("Erro ao sugerir tags:", err);
+    } finally {
+      setSugerindoTags(false);
+    }
+  }
+
   async function handleFotoSelecionada(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -304,6 +344,7 @@ export default function AdicionarPecaPage() {
         if (corDetectada) {
           handleNovaCor(corDetectada);
         }
+        handleSugerirTags(urlFinal);
       }
     } catch (err) {
       console.error(err);
@@ -393,6 +434,12 @@ export default function AdicionarPecaPage() {
             </label>
           )}
           {erroFoto && <p className="mt-2 text-sm text-red-600">{erroFoto}</p>}
+          {sugerindoTags && (
+            <p className="mt-2 flex items-center gap-1.5 text-sm text-[var(--color-sage)]">
+              <i className="fi-rr-sparkles text-xs" aria-hidden="true" />
+              Sugerindo tipo, ocasião e estação com IA…
+            </p>
+          )}
         </div>
 
         <Field label="Tipo">
