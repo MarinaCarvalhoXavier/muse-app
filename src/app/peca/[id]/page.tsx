@@ -44,7 +44,7 @@ export default function DetalhePecaPage() {
               <img
                 src={piece.fotoUrl}
                 alt={piece.tipo}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-contain"
               />
             ) : null}
             {piece.favorita && (
