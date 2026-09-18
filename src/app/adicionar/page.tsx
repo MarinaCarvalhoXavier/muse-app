@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Estacao, Ocasiao, Piece, Tipo } from "@/lib/types";
 import { generateId } from "@/lib/id";
+import { supabase } from "@/lib/supabase";
 import {
   addCustomCor,
   addCustomOcasiao,
@@ -117,6 +118,102 @@ export default function AdicionarPecaPage() {
     });
   }
 
+  async function normalizarEnquadramento(url: string): Promise<Blob | null> {
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Falha ao carregar imagem processada."));
+        img.src = url;
+      });
+
+      const canvasOriginal = document.createElement("canvas");
+      canvasOriginal.width = img.naturalWidth;
+      canvasOriginal.height = img.naturalHeight;
+      const ctxOriginal = canvasOriginal.getContext("2d");
+      if (!ctxOriginal) return null;
+      ctxOriginal.drawImage(img, 0, 0);
+
+      // Detecta os limites reais da peça numa amostra reduzida (mais rápido),
+      // depois converte de volta pra escala da imagem original.
+      const AMOSTRA_MAX = 400;
+      const escalaAmostra = Math.min(1, AMOSTRA_MAX / Math.max(img.naturalWidth, img.naturalHeight));
+      const larguraAmostra = Math.round(img.naturalWidth * escalaAmostra);
+      const alturaAmostra = Math.round(img.naturalHeight * escalaAmostra);
+      const canvasAmostra = document.createElement("canvas");
+      canvasAmostra.width = larguraAmostra;
+      canvasAmostra.height = alturaAmostra;
+      const ctxAmostra = canvasAmostra.getContext("2d");
+      if (!ctxAmostra) return null;
+      ctxAmostra.drawImage(img, 0, 0, larguraAmostra, alturaAmostra);
+      const amostra = ctxAmostra.getImageData(0, 0, larguraAmostra, alturaAmostra);
+
+      let minX = larguraAmostra;
+      let minY = alturaAmostra;
+      let maxX = 0;
+      let maxY = 0;
+      let encontrouPeca = false;
+
+      for (let y = 0; y < alturaAmostra; y++) {
+        for (let x = 0; x < larguraAmostra; x++) {
+          const i = (y * larguraAmostra + x) * 4;
+          const r = amostra.data[i];
+          const g = amostra.data[i + 1];
+          const b = amostra.data[i + 2];
+          const a = amostra.data[i + 3];
+          const quaseBranco = r > 240 && g > 240 && b > 240;
+          const transparente = a < 200;
+          if (!quaseBranco && !transparente) {
+            encontrouPeca = true;
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+
+      if (!encontrouPeca) return null;
+
+      const fatorVolta = 1 / escalaAmostra;
+      const bx = Math.floor(minX * fatorVolta);
+      const by = Math.floor(minY * fatorVolta);
+      const bLargura = Math.ceil((maxX - minX) * fatorVolta);
+      const bAltura = Math.ceil((maxY - minY) * fatorVolta);
+
+      const MARGEM = 0.14; // 14% de espaço em branco ao redor da peça, igual pra todas as fotos
+      const paddingX = bLargura * MARGEM;
+      const paddingY = bAltura * MARGEM;
+
+      const canvasFinal = document.createElement("canvas");
+      canvasFinal.width = Math.round(bLargura + paddingX * 2);
+      canvasFinal.height = Math.round(bAltura + paddingY * 2);
+      const ctxFinal = canvasFinal.getContext("2d");
+      if (!ctxFinal) return null;
+      ctxFinal.fillStyle = "#FFFFFF";
+      ctxFinal.fillRect(0, 0, canvasFinal.width, canvasFinal.height);
+      ctxFinal.drawImage(
+        canvasOriginal,
+        bx,
+        by,
+        bLargura,
+        bAltura,
+        Math.round(paddingX),
+        Math.round(paddingY),
+        bLargura,
+        bAltura
+      );
+
+      return new Promise((resolve) => {
+        canvasFinal.toBlob((blob) => resolve(blob), "image/png");
+      });
+    } catch (err) {
+      console.error("Erro ao normalizar enquadramento:", err);
+      return null;
+    }
+  }
+
   async function extrairCorPredominante(url: string): Promise<string | null> {
     try {
       const img = new Image();
@@ -188,8 +285,22 @@ export default function AdicionarPecaPage() {
       if (!res.ok) {
         setErroFoto(data.error || "Não foi possível processar a foto.");
       } else {
-        setFotoUrl(data.url);
-        const corDetectada = await extrairCorPredominante(data.url);
+        let urlFinal = data.url;
+        const enquadrada = await normalizarEnquadramento(data.url);
+        if (enquadrada) {
+          const nomeArquivo = `${generateId()}.png`;
+          const { error: uploadError } = await supabase.storage
+            .from("fotos-pecas")
+            .upload(nomeArquivo, enquadrada, { contentType: "image/png" });
+          if (!uploadError) {
+            const { data: publicUrlData } = supabase.storage
+              .from("fotos-pecas")
+              .getPublicUrl(nomeArquivo);
+            urlFinal = publicUrlData.publicUrl;
+          }
+        }
+        setFotoUrl(urlFinal);
+        const corDetectada = await extrairCorPredominante(urlFinal);
         if (corDetectada) {
           handleNovaCor(corDetectada);
         }
