@@ -13,10 +13,21 @@ function ordenarTipos(tipos: string[]): string[] {
   return [...padrao, ...extras];
 }
 
+type FiltrosAvancados = {
+  subtipos: string[];
+  ocasioes: string[];
+  cores: string[];
+  estacoes: string[];
+};
+
+const FILTROS_VAZIOS: FiltrosAvancados = { subtipos: [], ocasioes: [], cores: [], estacoes: [] };
+
 export default function ArmarioPage() {
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [filtro, setFiltro] = useState<string>("Todas");
+  const [filtrosAvancados, setFiltrosAvancados] = useState<FiltrosAvancados>(FILTROS_VAZIOS);
+  const [modalFiltrosAberto, setModalFiltrosAberto] = useState(false);
 
   useEffect(() => {
     let ativo = true;
@@ -36,6 +47,25 @@ export default function ArmarioPage() {
     [pieces]
   );
 
+  // Opções do filtro avançado vêm do que você realmente já cadastrou nas
+  // peças — não faz sentido oferecer pra filtrar por algo que ninguém usou.
+  const subtiposDisponiveis = useMemo(
+    () => Array.from(new Set(pieces.flatMap((p) => p.subtipos ?? []))).sort(),
+    [pieces]
+  );
+  const ocasioesDisponiveis = useMemo(
+    () => Array.from(new Set(pieces.flatMap((p) => p.ocasioes))).sort(),
+    [pieces]
+  );
+  const coresDisponiveis = useMemo(
+    () => Array.from(new Set(pieces.map((p) => p.cor))),
+    [pieces]
+  );
+  const estacoesDisponiveis = useMemo(
+    () => Array.from(new Set(pieces.flatMap((p) => p.estacoes))),
+    [pieces]
+  );
+
   async function handleToggleFavorita(piece: Piece) {
     const novoValor = !piece.favorita;
     setPieces((prev) =>
@@ -50,14 +80,46 @@ export default function ArmarioPage() {
     }
   }
 
+  function toggleFiltroAvancado(categoria: keyof FiltrosAvancados, valor: string) {
+    setFiltrosAvancados((prev) => {
+      const atual = prev[categoria];
+      const novo = atual.includes(valor) ? atual.filter((x) => x !== valor) : [...atual, valor];
+      return { ...prev, [categoria]: novo };
+    });
+  }
+
+  function limparFiltrosAvancados() {
+    setFiltrosAvancados(FILTROS_VAZIOS);
+  }
+
+  function passaFiltrosAvancados(p: Piece): boolean {
+    if (filtrosAvancados.subtipos.length > 0) {
+      const subtiposPeca = p.subtipos ?? [];
+      if (!subtiposPeca.some((s) => filtrosAvancados.subtipos.includes(s))) return false;
+    }
+    if (filtrosAvancados.ocasioes.length > 0) {
+      if (!p.ocasioes.some((o) => filtrosAvancados.ocasioes.includes(o))) return false;
+    }
+    if (filtrosAvancados.cores.length > 0) {
+      if (!filtrosAvancados.cores.includes(p.cor)) return false;
+    }
+    if (filtrosAvancados.estacoes.length > 0) {
+      if (!p.estacoes.some((e) => filtrosAvancados.estacoes.includes(e))) return false;
+    }
+    return true;
+  }
+
+  const totalFiltrosAtivos = Object.values(filtrosAvancados).reduce((acc, arr) => acc + arr.length, 0);
+  const pecasComFiltroAvancado = pieces.filter(passaFiltrosAvancados);
+
   const filtros = ["Todas", "Curtidas", ...tipos];
 
   const piecesFiltradas =
     filtro === "Todas"
       ? null // null = usa o agrupamento por tipo (comportamento padrão)
       : filtro === "Curtidas"
-      ? pieces.filter((p) => p.favorita)
-      : pieces.filter((p) => p.tipo === filtro);
+      ? pecasComFiltroAvancado.filter((p) => p.favorita)
+      : pecasComFiltroAvancado.filter((p) => p.tipo === filtro);
 
   return (
     <main className="px-4 pb-24 pt-8">
@@ -70,38 +132,63 @@ export default function ArmarioPage() {
       </header>
 
       {!carregando && pieces.length > 0 && (
-        <div className="mb-6 -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-          {filtros.map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFiltro(f)}
-              className={`shrink-0 rounded-full border px-4 py-1.5 text-sm ${
-                filtro === f
-                  ? "border-[var(--color-terracota)] bg-[var(--color-terracota)] text-white"
-                  : "border-black/10 text-black/60"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
+        <div className="mb-6 flex items-center gap-2">
+          <div className="-mx-1 flex flex-1 gap-2 overflow-x-auto px-1 pb-1">
+            {filtros.map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFiltro(f)}
+                className={`shrink-0 rounded-full border px-4 py-1.5 text-sm ${
+                  filtro === f
+                    ? "border-[var(--color-terracota)] bg-[var(--color-terracota)] text-white"
+                    : "border-black/10 text-black/60"
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setModalFiltrosAberto(true)}
+            aria-label="Filtros"
+            className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${
+              totalFiltrosAtivos > 0
+                ? "border-[var(--color-terracota)] text-[var(--color-terracota)]"
+                : "border-black/10 text-black/50"
+            }`}
+          >
+            <i className="fi-rr-settings-sliders text-sm" aria-hidden="true" />
+            {totalFiltrosAtivos > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-terracota)] text-[10px] text-white">
+                {totalFiltrosAtivos}
+              </span>
+            )}
+          </button>
         </div>
       )}
 
       {piecesFiltradas === null ? (
-        tipos.map((tipo) => {
-          const items = pieces.filter((p) => p.tipo === tipo);
-          return (
-            <section key={tipo} className="mb-8">
-              <h2 className="mb-3 font-[var(--font-fraunces)] text-lg">{tipo}</h2>
-              <div className="grid grid-cols-2 gap-3">
-                {items.map((piece) => (
-                  <PieceCard key={piece.id} piece={piece} onToggleFavorita={handleToggleFavorita} />
-                ))}
-              </div>
-            </section>
-          );
-        })
+        <>
+          {tipos.map((tipo) => {
+            const items = pecasComFiltroAvancado.filter((p) => p.tipo === tipo);
+            if (items.length === 0) return null;
+            return (
+              <section key={tipo} className="mb-8">
+                <h2 className="mb-3 font-[var(--font-fraunces)] text-lg">{tipo}</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {items.map((piece) => (
+                    <PieceCard key={piece.id} piece={piece} onToggleFavorita={handleToggleFavorita} />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+          {pecasComFiltroAvancado.length === 0 && (
+            <p className="mt-8 text-center text-sm text-black/40">Nenhuma peça com esses filtros.</p>
+          )}
+        </>
       ) : (
         <section className="mb-8">
           <div className="grid grid-cols-2 gap-3">
@@ -120,6 +207,128 @@ export default function ArmarioPage() {
           Nenhuma peça ainda. Toque no + para adicionar a primeira.
         </p>
       )}
+
+      {modalFiltrosAberto && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4">
+          <div className="max-h-[80vh] w-full max-w-sm overflow-y-auto rounded-2xl bg-white p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="font-medium">Filtros</p>
+              <button
+                type="button"
+                onClick={() => setModalFiltrosAberto(false)}
+                aria-label="Fechar"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-black/40"
+              >
+                <i className="fi-rr-cross-small" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="space-y-5">
+              {subtiposDisponiveis.length > 0 && (
+                <FiltroSecao
+                  titulo="Subtipo"
+                  opcoes={subtiposDisponiveis}
+                  selecionadas={filtrosAvancados.subtipos}
+                  onToggle={(v) => toggleFiltroAvancado("subtipos", v)}
+                />
+              )}
+              {ocasioesDisponiveis.length > 0 && (
+                <FiltroSecao
+                  titulo="Ocasião"
+                  opcoes={ocasioesDisponiveis}
+                  selecionadas={filtrosAvancados.ocasioes}
+                  onToggle={(v) => toggleFiltroAvancado("ocasioes", v)}
+                />
+              )}
+              {estacoesDisponiveis.length > 0 && (
+                <FiltroSecao
+                  titulo="Estação"
+                  opcoes={estacoesDisponiveis}
+                  selecionadas={filtrosAvancados.estacoes}
+                  onToggle={(v) => toggleFiltroAvancado("estacoes", v)}
+                />
+              )}
+              {coresDisponiveis.length > 0 && (
+                <div>
+                  <p className="mb-2 text-sm font-medium">Cor</p>
+                  <div className="flex flex-wrap gap-2">
+                    {coresDisponiveis.map((c) => {
+                      const ativa = filtrosAvancados.cores.includes(c);
+                      return (
+                        <button
+                          type="button"
+                          key={c}
+                          onClick={() => toggleFiltroAvancado("cores", c)}
+                          aria-label={c}
+                          className={`h-9 w-9 rounded-full border-2 ${
+                            ativa ? "border-[var(--color-terracota)]" : "border-black/10"
+                          }`}
+                          style={{ backgroundColor: c }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={limparFiltrosAvancados}
+                disabled={totalFiltrosAtivos === 0}
+                className="flex-1 rounded-full border border-black/10 py-2.5 text-sm font-medium disabled:opacity-40"
+              >
+                Limpar
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalFiltrosAberto(false)}
+                className="flex-1 rounded-full bg-[var(--color-terracota)] py-2.5 text-sm font-medium text-white"
+              >
+                Ver resultados
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
+  );
+}
+
+function FiltroSecao({
+  titulo,
+  opcoes,
+  selecionadas,
+  onToggle,
+}: {
+  titulo: string;
+  opcoes: string[];
+  selecionadas: string[];
+  onToggle: (opcao: string) => void;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-sm font-medium">{titulo}</p>
+      <div className="flex flex-wrap gap-2">
+        {opcoes.map((opcao) => {
+          const ativa = selecionadas.includes(opcao);
+          return (
+            <button
+              type="button"
+              key={opcao}
+              onClick={() => onToggle(opcao)}
+              className={`rounded-full border px-3 py-1.5 text-sm ${
+                ativa
+                  ? "border-[var(--color-terracota)] bg-[var(--color-terracota)]/10 text-[var(--color-terracota)]"
+                  : "border-black/10 text-black/60"
+              }`}
+            >
+              {opcao}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
