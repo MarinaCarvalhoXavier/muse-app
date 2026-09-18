@@ -38,6 +38,7 @@ function rowToPiece(row: PieceRow): Piece {
     marca: row.marca ?? undefined,
     notas: row.notas ?? undefined,
     estampa: row.estampa ?? undefined,
+    fotoUrl: row.foto_url ?? undefined,
     criadaEm: row.criada_em,
   };
 }
@@ -90,6 +91,7 @@ export async function addPiece(piece: Piece): Promise<{ error?: string }> {
     marca: piece.marca ?? null,
     notas: piece.notas ?? null,
     estampa: piece.estampa ?? null,
+    foto_url: piece.fotoUrl ?? null,
     criada_em: piece.criadaEm,
   });
 

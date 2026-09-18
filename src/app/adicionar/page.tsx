@@ -52,6 +52,11 @@ export default function AdicionarPecaPage() {
   const [notas, setNotas] = useState("");
   const [estampa, setEstampa] = useState("");
 
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+  const [fotoUrl, setFotoUrl] = useState<string | null>(null);
+  const [processandoFoto, setProcessandoFoto] = useState(false);
+  const [erroFoto, setErroFoto] = useState<string | null>(null);
+
   function toggleOcasiao(o: Ocasiao) {
     setOcasioes((prev) => (prev.includes(o) ? prev.filter((x) => x !== o) : [...prev, o]));
   }
@@ -86,6 +91,36 @@ export default function AdicionarPecaPage() {
     setCor(novaCor);
   }
 
+  async function handleFotoSelecionada(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setErroFoto(null);
+    setFotoUrl(null);
+    setFotoPreview(URL.createObjectURL(file));
+    setProcessandoFoto(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("imageFile", file);
+      const res = await fetch("/api/remover-fundo", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErroFoto(data.error || "Não foi possível processar a foto.");
+      } else {
+        setFotoUrl(data.url);
+      }
+    } catch (err) {
+      console.error(err);
+      setErroFoto("Não foi possível processar a foto. Verifique sua conexão.");
+    } finally {
+      setProcessandoFoto(false);
+    }
+  }
+
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -103,6 +138,7 @@ export default function AdicionarPecaPage() {
       marca: marca || undefined,
       notas: notas || undefined,
       estampa: estampa || undefined,
+      fotoUrl: fotoUrl || undefined,
       criadaEm: new Date().toISOString(),
     };
     const { error } = await addPiece(piece);
@@ -120,14 +156,51 @@ export default function AdicionarPecaPage() {
         <p className="text-xs uppercase tracking-wide text-[var(--color-sage)]">Nova peça</p>
         <h1 className="font-[var(--font-fraunces)] text-2xl">Adicionar peça</h1>
         <p className="mt-1 text-sm text-black/50">
-          Por enquanto o cadastro é manual — a remoção de fundo e o preenchimento
-          automático por IA entram na V2.
+          Tire uma foto da peça — a gente remove o fundo e dá um efeito de vitrine
+          automaticamente.
         </p>
       </header>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="flex h-40 items-center justify-center rounded-2xl border-2 border-dashed border-black/10 text-sm text-black/40">
-          Foto da peça (em breve)
+        <div>
+          {fotoPreview ? (
+            <div className="relative flex h-56 items-center justify-center overflow-hidden rounded-2xl border border-black/10 bg-white">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={fotoUrl ?? fotoPreview}
+                alt="Prévia da peça"
+                className="h-full w-full object-contain"
+              />
+              {processandoFoto && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/70 text-sm text-black/60">
+                  Removendo fundo e ajustando a peça…
+                </div>
+              )}
+              <label className="absolute bottom-2 right-2 cursor-pointer rounded-full bg-black/70 px-3 py-1.5 text-xs text-white">
+                Trocar foto
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleFotoSelecionada}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          ) : (
+            <label className="flex h-40 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-black/10 text-sm text-black/40">
+              <i className="fi-rr-camera text-xl" aria-hidden="true" />
+              Adicionar foto da peça
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFotoSelecionada}
+                className="hidden"
+              />
+            </label>
+          )}
+          {erroFoto && <p className="mt-2 text-sm text-red-600">{erroFoto}</p>}
         </div>
 
         <Field label="Tipo">
@@ -203,10 +276,10 @@ export default function AdicionarPecaPage() {
 
         <button
           type="submit"
-          disabled={salvando}
+          disabled={salvando || processandoFoto}
           className="w-full rounded-full bg-[var(--color-terracota)] py-3 font-medium text-white disabled:opacity-60"
         >
-          {salvando ? "Salvando..." : "Salvar no armário"}
+          {salvando ? "Salvando..." : processandoFoto ? "Aguarde a foto..." : "Salvar no armário"}
         </button>
       </form>
     </main>

@@ -37,8 +37,16 @@ export default function DetalhePecaPage() {
         <>
           <div
             className="relative mb-6 aspect-[3/4] w-full overflow-hidden rounded-2xl"
-            style={{ backgroundColor: piece.cor }}
+            style={{ backgroundColor: piece.fotoUrl ? "#fff" : piece.cor }}
           >
+            {piece.fotoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={piece.fotoUrl}
+                alt={piece.tipo}
+                className="h-full w-full object-cover"
+              />
+            ) : null}
             {piece.favorita && (
               <span className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/85 text-red-500">
                 <i className="fi-sr-heart" aria-hidden="true" />

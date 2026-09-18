@@ -12,6 +12,7 @@ export interface Piece {
   marca?: string;
   notas?: string;
   estampa?: string;
+  fotoUrl?: string;
   criadaEm: string;
 }
 

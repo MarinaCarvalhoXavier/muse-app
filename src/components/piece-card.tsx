@@ -7,7 +7,16 @@ export function PieceCard({ piece }: { piece: Piece }) {
       href={`/peca/${piece.id}`}
       className="relative block aspect-[3/4] overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition-transform active:scale-[0.98]"
     >
-      <div className="h-full w-full" style={{ backgroundColor: piece.cor }} />
+      {piece.fotoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={piece.fotoUrl}
+          alt={piece.tipo}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="h-full w-full" style={{ backgroundColor: piece.cor }} />
+      )}
       <span
         className={`absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/85 backdrop-blur ${
           piece.favorita ? "text-red-500" : "text-black/30"
