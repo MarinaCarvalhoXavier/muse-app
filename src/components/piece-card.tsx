@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { Piece } from "@/lib/types";
 
-export function PieceCard({ piece }: { piece: Piece }) {
+export function PieceCard({
+  piece,
+  onToggleFavorita,
+}: {
+  piece: Piece;
+  onToggleFavorita?: (piece: Piece) => void;
+}) {
   return (
     <Link
       href={`/peca/${piece.id}`}
@@ -17,13 +23,20 @@ export function PieceCard({ piece }: { piece: Piece }) {
       ) : (
         <div className="h-full w-full" style={{ backgroundColor: piece.cor }} />
       )}
-      <span
-        className={`absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/85 backdrop-blur ${
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onToggleFavorita?.(piece);
+        }}
+        aria-label={piece.favorita ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+        className={`absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/85 backdrop-blur transition-transform active:scale-90 ${
           piece.favorita ? "text-red-500" : "text-black/30"
         }`}
       >
         <i className={piece.favorita ? "fi-sr-heart" : "fi-rr-heart"} aria-hidden="true" />
-      </span>
+      </button>
     </Link>
   );
 }

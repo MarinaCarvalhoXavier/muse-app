@@ -102,6 +102,24 @@ export async function addPiece(piece: Piece): Promise<{ error?: string }> {
   return {};
 }
 
+export async function updateFavorita(id: string, favorita: boolean): Promise<{ error?: string }> {
+  const { error } = await supabase.from("pieces").update({ favorita }).eq("id", id);
+  if (error) {
+    console.error("Erro ao atualizar favorita:", error.message);
+    return { error: error.message };
+  }
+  return {};
+}
+
+export async function deletePiece(id: string): Promise<{ error?: string }> {
+  const { error } = await supabase.from("pieces").delete().eq("id", id);
+  if (error) {
+    console.error("Erro ao excluir peça:", error.message);
+    return { error: error.message };
+  }
+  return {};
+}
+
 export async function getOutfits(): Promise<Outfit[]> {
   const { data, error } = await supabase
     .from("outfits")
