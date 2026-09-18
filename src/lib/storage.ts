@@ -8,7 +8,7 @@ import { Estacao, Ocasiao, Outfit, Piece, Tipo } from "./types";
 type PieceRow = {
   id: string;
   tipo: string;
-  subtipo: string | null;
+  subtipos: string[] | null;
   ocasioes: string[];
   cor: string;
   estacoes: string[];
@@ -32,7 +32,7 @@ function rowToPiece(row: PieceRow): Piece {
   return {
     id: row.id,
     tipo: row.tipo,
-    subtipo: row.subtipo ?? undefined,
+    subtipos: row.subtipos ?? [],
     ocasioes: row.ocasioes ?? [],
     cor: row.cor,
     estacoes: (row.estacoes ?? []) as Estacao[],
@@ -86,7 +86,7 @@ export async function addPiece(piece: Piece): Promise<{ error?: string }> {
   const { error } = await supabase.from("pieces").insert({
     id: piece.id,
     tipo: piece.tipo,
-    subtipo: piece.subtipo ?? null,
+    subtipos: piece.subtipos ?? [],
     ocasioes: piece.ocasioes,
     cor: piece.cor,
     estacoes: piece.estacoes,
@@ -160,7 +160,7 @@ export async function addOutfit(outfit: Outfit): Promise<{ error?: string }> {
 
 const CUSTOM_TIPOS_KEY = "muse:custom-tipos-v2";
 const CUSTOM_OCASIOES_KEY = "muse:custom-ocasioes";
-const CUSTOM_CORES_KEY = "muse:custom-cores";
+const CUSTOM_CORES_KEY = "muse:custom-cores-v2";
 
 function readList(key: string): string[] {
   if (typeof window === "undefined") return [];

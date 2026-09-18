@@ -41,20 +41,22 @@ const SUBTIPOS_PADRAO: Record<string, string[]> = {
 
 const OCASIOES_PADRAO: Ocasiao[] = ["Casual", "Trabalho", "Festa chique", "Balada eletrônica"];
 const ESTACOES: Estacao[] = ["Verão", "Inverno", "Outono", "Primavera", "Chuva"];
+// Paleta enxuta de cores "guarda-chuva" — no MVP cada peça usa a cor básica
+// mais próxima (ex: azul bebê e azul marinho caem ambos em "Azul"). Dá pra
+// refinar isso depois; por enquanto evita a lista de cores crescer sem fim.
 const CORES_PADRAO = [
-  "#000000",
-  "#FFFFFF",
-  "#8E8E8E",
-  "#D9C9A8",
-  "#8B7355",
-  "#C1694A",
-  "#B23A48",
-  "#D96C4E",
-  "#E0B94F",
-  "#5C7A54",
-  "#3B4A63",
-  "#6B4E71",
-  "#262220",
+  "#000000", // Preto
+  "#FFFFFF", // Branco
+  "#9CA3AF", // Cinza
+  "#D9C9A8", // Bege
+  "#8B7355", // Marrom
+  "#B23A48", // Vermelho
+  "#D9743E", // Laranja
+  "#E0B94F", // Amarelo
+  "#5C7A54", // Verde
+  "#3B4A63", // Azul
+  "#6B4E71", // Roxo
+  "#C97B94", // Rosa
 ];
 
 export default function AdicionarPecaPage() {
@@ -67,7 +69,7 @@ export default function AdicionarPecaPage() {
   const [cores, setCores] = useState<string[]>(() => [...CORES_PADRAO, ...getCustomCores()]);
 
   const [tipo, setTipo] = useState<Tipo>(TIPOS_PADRAO[0]);
-  const [subtipo, setSubtipo] = useState<string>("");
+  const [subtipos, setSubtipos] = useState<string[]>([]);
   const [customSubtipos, setCustomSubtipos] = useState<Record<string, string[]>>(() => {
     const mapa: Record<string, string[]> = {};
     for (const t of TIPOS_PADRAO) mapa[t] = getCustomSubtipos(t);
@@ -105,7 +107,7 @@ export default function AdicionarPecaPage() {
 
   function selecionarTipo(novoTipo: Tipo) {
     setTipo(novoTipo);
-    setSubtipo("");
+    setSubtipos([]);
   }
 
   function handleNovoTipo(nome: string) {
@@ -114,19 +116,22 @@ export default function AdicionarPecaPage() {
     setTipos((prev) => [...prev, novo]);
     addCustomTipo(novo);
     setTipo(novo);
-    setSubtipo("");
+    setSubtipos([]);
+  }
+
+  function toggleSubtipo(s: string) {
+    setSubtipos((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
   }
 
   function handleNovoSubtipo(nome: string, tipoAlvo: string = tipo) {
-    const opcoesAtuais = [...(SUBTIPOS_PADRAO[tipoAlvo] ?? []), ...(customSubtipos[tipoAlvo] ?? [])];
-    if (!nome.trim() || opcoesAtuais.includes(nome.trim())) {
-      if (nome.trim()) setSubtipo(nome.trim());
-      return;
-    }
+    if (!nome.trim()) return;
     const novo = nome.trim();
-    setCustomSubtipos((prev) => ({ ...prev, [tipoAlvo]: [...(prev[tipoAlvo] ?? []), novo] }));
-    addCustomSubtipo(tipoAlvo, novo);
-    setSubtipo(novo);
+    const opcoesAtuais = [...(SUBTIPOS_PADRAO[tipoAlvo] ?? []), ...(customSubtipos[tipoAlvo] ?? [])];
+    if (!opcoesAtuais.includes(novo)) {
+      setCustomSubtipos((prev) => ({ ...prev, [tipoAlvo]: [...(prev[tipoAlvo] ?? []), novo] }));
+      addCustomSubtipo(tipoAlvo, novo);
+    }
+    setSubtipos((prev) => (prev.includes(novo) ? prev : [...prev, novo]));
   }
 
   function handleNovaOcasiao(nome: string) {
@@ -145,6 +150,32 @@ export default function AdicionarPecaPage() {
     setCores((prev) => [...prev, novaCor]);
     addCustomCor(novaCor);
     setCor(novaCor);
+  }
+
+  // A cor detectada na foto quase nunca bate exatamente com uma cor da
+  // paleta — em vez de criar uma cor nova pra cada peça (o que fazia a
+  // lista crescer sem parar), escolhemos a cor "guarda-chuva" mais parecida.
+  function corMaisProxima(hex: string): string {
+    const r1 = parseInt(hex.slice(1, 3), 16);
+    const g1 = parseInt(hex.slice(3, 5), 16);
+    const b1 = parseInt(hex.slice(5, 7), 16);
+    let melhor = CORES_PADRAO[0];
+    let menorDistancia = Infinity;
+    for (const candidata of CORES_PADRAO) {
+      const r2 = parseInt(candidata.slice(1, 3), 16);
+      const g2 = parseInt(candidata.slice(3, 5), 16);
+      const b2 = parseInt(candidata.slice(5, 7), 16);
+      const distancia = (r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2;
+      if (distancia < menorDistancia) {
+        menorDistancia = distancia;
+        melhor = candidata;
+      }
+    }
+    return melhor;
+  }
+
+  function aplicarCorDetectada(hex: string) {
+    setCor(corMaisProxima(hex));
   }
 
   async function converterParaJpeg(file: File): Promise<Blob> {
@@ -350,8 +381,10 @@ export default function AdicionarPecaPage() {
         selecionarTipo(sugestao.tipo);
       }
 
-      if (sugestao.subtipo) {
-        handleNovoSubtipo(sugestao.subtipo, tipoFinal);
+      if (Array.isArray(sugestao.subtipos)) {
+        for (const s of sugestao.subtipos as string[]) {
+          handleNovoSubtipo(s, tipoFinal);
+        }
       }
 
       if (Array.isArray(sugestao.ocasioes)) {
@@ -415,7 +448,7 @@ export default function AdicionarPecaPage() {
         setFotoUrl(urlFinal);
         const corDetectada = await extrairCorPredominante(urlFinal);
         if (corDetectada) {
-          handleNovaCor(corDetectada);
+          aplicarCorDetectada(corDetectada);
         }
         handleSugerirTags(urlFinal);
       }
@@ -437,7 +470,7 @@ export default function AdicionarPecaPage() {
     const piece: Piece = {
       id: generateId(),
       tipo,
-      subtipo: subtipo || undefined,
+      subtipos: subtipos.length > 0 ? subtipos : undefined,
       ocasioes,
       cor,
       estacoes,
@@ -525,19 +558,12 @@ export default function AdicionarPecaPage() {
         </Field>
 
         {(SUBTIPOS_PADRAO[tipo] || customSubtipos[tipo]) && (
-          <Field label={`Qual tipo de ${tipo.toLowerCase()}?`}>
-            <select
-              value={subtipo}
-              onChange={(e) => setSubtipo(e.target.value)}
-              className="w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 text-sm"
-            >
-              <option value="">Selecionar...</option>
-              {[...(SUBTIPOS_PADRAO[tipo] ?? []), ...(customSubtipos[tipo] ?? [])].map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+          <Field label={`Qual tipo de ${tipo.toLowerCase()}? (pode marcar mais de um)`}>
+            <ChipGroup
+              options={[...(SUBTIPOS_PADRAO[tipo] ?? []), ...(customSubtipos[tipo] ?? [])]}
+              selected={subtipos}
+              onToggle={toggleSubtipo}
+            />
             <AddChip placeholder="Novo subtipo" onAdd={(nome) => handleNovoSubtipo(nome)} />
           </Field>
         )}

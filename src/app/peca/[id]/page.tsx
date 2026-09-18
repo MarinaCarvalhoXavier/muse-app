@@ -98,7 +98,9 @@ export default function DetalhePecaPage() {
 
           <h1 className="mb-1 font-[var(--font-fraunces)] text-2xl">
             {piece.tipo}
-            {piece.subtipo && <span className="text-black/40"> · {piece.subtipo}</span>}
+            {piece.subtipos && piece.subtipos.length > 0 && (
+              <span className="text-black/40"> · {piece.subtipos.join(", ")}</span>
+            )}
           </h1>
           <p className="mb-6 text-sm text-black/50">
             Adicionada em {new Date(piece.criadaEm).toLocaleDateString("pt-BR")}
