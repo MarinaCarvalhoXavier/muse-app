@@ -40,11 +40,11 @@ export async function POST(req: NextRequest) {
   photoroomForm.append("imageFile", file, "peca.jpg");
   photoroomForm.append("editWithAI.mode", "ai.auto");
   photoroomForm.append("editWithAI.prompt", PROMPT);
-  // Não mandamos background.color aqui: por padrão a Photoroom já deixa o
-  // fundo transparente, e forçar esse parâmetro junto com editWithAI fez a
-  // IA pular o efeito de "vitrine" (volume/forma de vestido) e devolver só
-  // um recorte plano da peça. O fundo branco que aparecia antes era culpa
-  // só do texto do PROMPT acima, já corrigido.
+  // A IA generativa (editWithAI) parece devolver a cena inteira que ela
+  // "imaginou", fundo incluso — então mandamos remover o fundo dessa
+  // imagem já editada, como um passo separado. Não mandamos background.color
+  // porque isso desativa o efeito vitrine (visto no teste anterior).
+  photoroomForm.append("removeBackground", "true");
 
   let photoroomRes: Response;
   try {
