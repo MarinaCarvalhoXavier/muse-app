@@ -58,6 +58,7 @@ export default function AdicionarPecaPage() {
   const [processandoFoto, setProcessandoFoto] = useState(false);
   const [erroFoto, setErroFoto] = useState<string | null>(null);
   const [sugerindoTags, setSugerindoTags] = useState(false);
+  const [erroSugestao, setErroSugestao] = useState<string | null>(null);
 
   function toggleOcasiao(o: Ocasiao) {
     setOcasioes((prev) => (prev.includes(o) ? prev.filter((x) => x !== o) : [...prev, o]));
@@ -265,13 +266,20 @@ export default function AdicionarPecaPage() {
 
   async function handleSugerirTags(url: string) {
     setSugerindoTags(true);
+    setErroSugestao(null);
     try {
       const res = await fetch("/api/sugerir-tags", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fotoUrl: url, tipos, ocasioes: ocasioesOpcoes }),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        const dataErro = await res.json().catch(() => null);
+        setErroSugestao(
+          dataErro?.error || "Não consegui sugerir automaticamente, mas você pode preencher na mão."
+        );
+        return;
+      }
       const sugestao = await res.json();
 
       if (sugestao.tipo) {
@@ -297,6 +305,7 @@ export default function AdicionarPecaPage() {
       }
     } catch (err) {
       console.error("Erro ao sugerir tags:", err);
+      setErroSugestao("Não consegui sugerir automaticamente, mas você pode preencher na mão.");
     } finally {
       setSugerindoTags(false);
     }
@@ -439,6 +448,9 @@ export default function AdicionarPecaPage() {
               <i className="fi-rr-sparkles text-xs" aria-hidden="true" />
               Sugerindo tipo, ocasião e estação com IA…
             </p>
+          )}
+          {erroSugestao && (
+            <p className="mt-2 text-sm text-black/40">{erroSugestao}</p>
           )}
         </div>
 
