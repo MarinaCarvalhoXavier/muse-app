@@ -8,8 +8,9 @@ const PROMPT =
   "curves, and natural tension lines while keeping the wearer fully invisible. " +
   "Only the product should appear, floating. Use the most flattering perspective and " +
   "make the item look new with very sharp and clean resolution. Show only the main " +
-  "subject on a plain white background. If the original product is flat, add natural " +
-  "3D structure so it looks worn while keeping the wearer invisible. Remove wrinkles if any.";
+  "subject with the background fully removed — transparent, with no white box, frame, " +
+  "shadow-plate or backdrop of any kind around it. If the original product is flat, add " +
+  "natural 3D structure so it looks worn while keeping the wearer invisible. Remove wrinkles if any.";
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.PHOTOROOM_API_KEY;
@@ -39,6 +40,10 @@ export async function POST(req: NextRequest) {
   photoroomForm.append("imageFile", file, "peca.jpg");
   photoroomForm.append("editWithAI.mode", "ai.auto");
   photoroomForm.append("editWithAI.prompt", PROMPT);
+  // Sem isso, o próprio texto do prompt acima pode fazer a IA "desenhar" um
+  // fundo branco sólido em vez de deixar transparente — daí o quadrado
+  // branco aparecendo atrás de cada peça quando duas se sobrepõem no canvas.
+  photoroomForm.append("background.color", "transparent");
 
   let photoroomRes: Response;
   try {
