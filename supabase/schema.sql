@@ -4,6 +4,7 @@
 create table if not exists pieces (
   id uuid primary key,
   tipo text not null,
+  subtipo text,
   ocasioes text[] not null default '{}',
   cor text not null,
   estacoes text[] not null default '{}',

@@ -13,7 +13,11 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null);
   const fotoUrl = body?.fotoUrl as string | undefined;
-  const tipos = Array.isArray(body?.tipos) ? (body.tipos as string[]) : [];
+  const tiposPrincipais = Array.isArray(body?.tiposPrincipais) ? (body.tiposPrincipais as string[]) : [];
+  const subtiposConhecidos =
+    body?.subtiposConhecidos && typeof body.subtiposConhecidos === "object"
+      ? (body.subtiposConhecidos as Record<string, string[]>)
+      : {};
   const ocasioes = Array.isArray(body?.ocasioes) ? (body.ocasioes as string[]) : [];
 
   if (!fotoUrl) {
@@ -31,20 +35,27 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await imagemRes.arrayBuffer());
     const base64 = buffer.toString("base64");
 
+    const subtiposTexto = Object.entries(subtiposConhecidos)
+      .map(([tipo, lista]) => `  - ${tipo}: ${lista.length ? lista.join(", ") : "(nenhum subtipo ainda)"}`)
+      .join("\n");
+
     const prompt =
       "Você está ajudando a organizar um armário digital. Olhe a foto da peça de roupa " +
       "(fundo já removido, efeito vitrine) e sugira como categorizá-la.\n\n" +
-      `Tipos já usados por essa pessoa: ${tipos.length ? tipos.join(", ") : "nenhum ainda"}.\n` +
+      `Categorias principais (tipo) disponíveis: ${tiposPrincipais.join(", ")}.\n` +
+      "Subtipos (detalhe) já usados por essa pessoa em cada categoria:\n" +
+      `${subtiposTexto || "  (nenhum subtipo ainda)"}\n\n` +
       `Ocasiões já usadas por essa pessoa: ${ocasioes.length ? ocasioes.join(", ") : "nenhuma ainda"}.\n\n` +
       "Responda APENAS com um JSON válido, sem nenhum texto antes ou depois, no formato:\n" +
-      '{"tipo": "string", "ocasioes": ["string", ...], "estacoes": ["string", ...]}\n\n' +
+      '{"tipo": "string", "subtipo": "string", "ocasioes": ["string", ...], "estacoes": ["string", ...]}\n\n' +
       "Regras:\n" +
-      "- tipo: prefira reaproveitar um dos tipos já usados se a peça se encaixar bem neles " +
-      "(ex: Blusas, Calças, Sapatos, Acessórios). Se for algo bem diferente (joia, bolsa, " +
-      "óculos, cinto, chapéu etc.), pode sugerir um tipo novo, curto e no plural, em português.\n" +
-      "- ocasioes: prefira reaproveitar ocasiões já usadas quando fizer sentido. Pode sugerir " +
-      "mais de uma, ou uma nova se nenhuma existente combinar. Nunca deixe vazio se for possível " +
-      "inferir algo razoável.\n" +
+      "- tipo: escolha OBRIGATORIAMENTE uma das categorias principais listadas acima (nunca invente uma nova aqui).\n" +
+      "- subtipo: o detalhe da peça dentro dessa categoria (ex: Regata, Cropped, Tomara que caia, Blazer, " +
+      "Calça, Saia, Tênis, Sandália, Colar, Bolsa de mão etc). Prefira reaproveitar um subtipo já usado " +
+      "nessa mesma categoria se a peça se encaixar bem nele. Se nenhum combinar, pode sugerir um subtipo " +
+      "novo, curto, em português. Se não der pra identificar um subtipo específico, retorne uma string vazia.\n" +
+      "- ocasioes: prefira reaproveitar ocasiões já usadas quando fizer sentido. Pode sugerir mais de uma, " +
+      "ou uma nova se nenhuma existente combinar. Nunca deixe vazio se for possível inferir algo razoável.\n" +
       `- estacoes: escolha somente entre estes valores exatos: ${ESTACOES_VALIDAS.join(", ")}. ` +
       "Pode escolher mais de um (ex: uma blusa leve pode servir pra Verão e Primavera). Se a " +
       "peça for atemporal (ex: um acessório básico), pode sugerir todas.";
@@ -101,7 +112,11 @@ export async function POST(req: NextRequest) {
 
     const sugestao = JSON.parse(match[0]);
 
-    const tipoSugerido = typeof sugestao.tipo === "string" ? sugestao.tipo.trim() : "";
+    const tipoSugerido =
+      typeof sugestao.tipo === "string" && tiposPrincipais.includes(sugestao.tipo.trim())
+        ? sugestao.tipo.trim()
+        : null;
+    const subtipoSugerido = typeof sugestao.subtipo === "string" ? sugestao.subtipo.trim() : "";
     const ocasioesSugeridas = Array.isArray(sugestao.ocasioes)
       ? sugestao.ocasioes.filter((o: unknown): o is string => typeof o === "string" && o.trim().length > 0)
       : [];
@@ -110,7 +125,8 @@ export async function POST(req: NextRequest) {
       : [];
 
     return NextResponse.json({
-      tipo: tipoSugerido || null,
+      tipo: tipoSugerido,
+      subtipo: subtipoSugerido || null,
       ocasioes: ocasioesSugeridas,
       estacoes: estacoesSugeridas,
     });

@@ -8,6 +8,7 @@ import { Estacao, Ocasiao, Outfit, Piece, Tipo } from "./types";
 type PieceRow = {
   id: string;
   tipo: string;
+  subtipo: string | null;
   ocasioes: string[];
   cor: string;
   estacoes: string[];
@@ -31,6 +32,7 @@ function rowToPiece(row: PieceRow): Piece {
   return {
     id: row.id,
     tipo: row.tipo,
+    subtipo: row.subtipo ?? undefined,
     ocasioes: row.ocasioes ?? [],
     cor: row.cor,
     estacoes: (row.estacoes ?? []) as Estacao[],
@@ -84,6 +86,7 @@ export async function addPiece(piece: Piece): Promise<{ error?: string }> {
   const { error } = await supabase.from("pieces").insert({
     id: piece.id,
     tipo: piece.tipo,
+    subtipo: piece.subtipo ?? null,
     ocasioes: piece.ocasioes,
     cor: piece.cor,
     estacoes: piece.estacoes,
@@ -155,7 +158,7 @@ export async function addOutfit(outfit: Outfit): Promise<{ error?: string }> {
 // em si, então continuam no localStorage mesmo depois do Supabase entrar.
 // ---------------------------------------------------------------------------
 
-const CUSTOM_TIPOS_KEY = "muse:custom-tipos";
+const CUSTOM_TIPOS_KEY = "muse:custom-tipos-v2";
 const CUSTOM_OCASIOES_KEY = "muse:custom-ocasioes";
 const CUSTOM_CORES_KEY = "muse:custom-cores";
 
@@ -182,6 +185,20 @@ export function getCustomTipos(): Tipo[] {
 
 export function addCustomTipo(tipo: Tipo) {
   appendToList(CUSTOM_TIPOS_KEY, tipo);
+}
+
+// Subtipos são guardados por tipo principal (ex: os subtipos de "Parte de
+// cima" são uma lista separada dos de "Sapatos").
+function customSubtiposKey(tipoPrincipal: string): string {
+  return `muse:custom-subtipos:${tipoPrincipal}`;
+}
+
+export function getCustomSubtipos(tipoPrincipal: string): string[] {
+  return readList(customSubtiposKey(tipoPrincipal));
+}
+
+export function addCustomSubtipo(tipoPrincipal: string, subtipo: string) {
+  appendToList(customSubtiposKey(tipoPrincipal), subtipo);
 }
 
 export function getCustomOcasioes(): Ocasiao[] {

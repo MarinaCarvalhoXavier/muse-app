@@ -5,6 +5,7 @@ export type Estacao = "Verão" | "Inverno" | "Outono" | "Primavera" | "Chuva";
 export interface Piece {
   id: string;
   tipo: Tipo;
+  subtipo?: string;
   ocasioes: Ocasiao[];
   cor: string;
   estacoes: Estacao[];

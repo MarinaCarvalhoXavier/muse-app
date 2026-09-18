@@ -5,7 +5,7 @@ import { Piece } from "@/lib/types";
 import { getPieces, updateFavorita } from "@/lib/storage";
 import { PieceCard } from "@/components/piece-card";
 
-const ORDEM_PADRAO = ["Blusas", "Calças", "Sapatos", "Acessórios"];
+const ORDEM_PADRAO = ["Parte de cima", "Parte de baixo", "Vestidos", "Macacões", "Sapatos", "Bolsas", "Acessórios"];
 
 function ordenarTipos(tipos: string[]): string[] {
   const padrao = ORDEM_PADRAO.filter((t) => tipos.includes(t));

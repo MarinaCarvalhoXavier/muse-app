@@ -8,14 +8,37 @@ import { supabase } from "@/lib/supabase";
 import {
   addCustomCor,
   addCustomOcasiao,
+  addCustomSubtipo,
   addCustomTipo,
   addPiece,
   getCustomCores,
   getCustomOcasioes,
+  getCustomSubtipos,
   getCustomTipos,
 } from "@/lib/storage";
 
-const TIPOS_PADRAO: Tipo[] = ["Blusas", "Calças", "Sapatos", "Acessórios"];
+const TIPOS_PADRAO: Tipo[] = [
+  "Parte de cima",
+  "Parte de baixo",
+  "Vestidos",
+  "Macacões",
+  "Sapatos",
+  "Bolsas",
+  "Acessórios",
+];
+
+// Subtipos são o detalhe da peça dentro de cada categoria principal. A
+// pessoa pode adicionar outros próprios além desses (guardados por tipo).
+const SUBTIPOS_PADRAO: Record<string, string[]> = {
+  "Parte de cima": ["Regata", "Cropped", "Tomara que caia", "Top", "Camiseta", "Blusa", "Camisa", "Blazer", "Casaco", "Tricô"],
+  "Parte de baixo": ["Calça", "Saia", "Short", "Bermuda", "Legging"],
+  "Vestidos": ["Curto", "Midi", "Longo"],
+  "Macacões": ["Macacão longo", "Macacão curto", "Pantalona"],
+  "Sapatos": ["Tênis", "Sandália", "Salto", "Bota", "Rasteirinha", "Chinelo"],
+  "Bolsas": ["Bolsa de mão", "Mochila", "Carteira", "Transversal"],
+  "Acessórios": ["Colar", "Brinco", "Cinto", "Óculos", "Chapéu", "Pulseira", "Anel"],
+};
+
 const OCASIOES_PADRAO: Ocasiao[] = ["Casual", "Trabalho", "Festa chique", "Balada eletrônica"];
 const ESTACOES: Estacao[] = ["Verão", "Inverno", "Outono", "Primavera", "Chuva"];
 const CORES_PADRAO = [
@@ -44,7 +67,14 @@ export default function AdicionarPecaPage() {
   const [cores, setCores] = useState<string[]>(() => [...CORES_PADRAO, ...getCustomCores()]);
 
   const [tipo, setTipo] = useState<Tipo>(TIPOS_PADRAO[0]);
+  const [subtipo, setSubtipo] = useState<string>("");
+  const [customSubtipos, setCustomSubtipos] = useState<Record<string, string[]>>(() => {
+    const mapa: Record<string, string[]> = {};
+    for (const t of TIPOS_PADRAO) mapa[t] = getCustomSubtipos(t);
+    return mapa;
+  });
   const [ocasioes, setOcasioes] = useState<Ocasiao[]>([]);
+  const [mostrarMaisOcasioes, setMostrarMaisOcasioes] = useState(false);
   const [cor, setCor] = useState(CORES_PADRAO[0]);
   const [estacoes, setEstacoes] = useState<Estacao[]>([]);
   const [favorita, setFavorita] = useState(false);
@@ -64,8 +94,18 @@ export default function AdicionarPecaPage() {
     setOcasioes((prev) => (prev.includes(o) ? prev.filter((x) => x !== o) : [...prev, o]));
   }
 
+  // Ocasiões padrão + qualquer uma já marcada ficam sempre visíveis. As
+  // outras (criadas por você antes) ficam escondidas atrás do "+ mais".
+  const ocasioesVisiveis = ocasioesOpcoes.filter((o) => OCASIOES_PADRAO.includes(o) || ocasioes.includes(o));
+  const ocasioesEscondidas = ocasioesOpcoes.filter((o) => !OCASIOES_PADRAO.includes(o) && !ocasioes.includes(o));
+
   function toggleEstacao(e: Estacao) {
     setEstacoes((prev) => (prev.includes(e) ? prev.filter((x) => x !== e) : [...prev, e]));
+  }
+
+  function selecionarTipo(novoTipo: Tipo) {
+    setTipo(novoTipo);
+    setSubtipo("");
   }
 
   function handleNovoTipo(nome: string) {
@@ -74,6 +114,19 @@ export default function AdicionarPecaPage() {
     setTipos((prev) => [...prev, novo]);
     addCustomTipo(novo);
     setTipo(novo);
+    setSubtipo("");
+  }
+
+  function handleNovoSubtipo(nome: string, tipoAlvo: string = tipo) {
+    const opcoesAtuais = [...(SUBTIPOS_PADRAO[tipoAlvo] ?? []), ...(customSubtipos[tipoAlvo] ?? [])];
+    if (!nome.trim() || opcoesAtuais.includes(nome.trim())) {
+      if (nome.trim()) setSubtipo(nome.trim());
+      return;
+    }
+    const novo = nome.trim();
+    setCustomSubtipos((prev) => ({ ...prev, [tipoAlvo]: [...(prev[tipoAlvo] ?? []), novo] }));
+    addCustomSubtipo(tipoAlvo, novo);
+    setSubtipo(novo);
   }
 
   function handleNovaOcasiao(nome: string) {
@@ -268,10 +321,19 @@ export default function AdicionarPecaPage() {
     setSugerindoTags(true);
     setErroSugestao(null);
     try {
+      const subtiposConhecidos: Record<string, string[]> = {};
+      for (const t of tipos) {
+        subtiposConhecidos[t] = [...(SUBTIPOS_PADRAO[t] ?? []), ...(customSubtipos[t] ?? [])];
+      }
       const res = await fetch("/api/sugerir-tags", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fotoUrl: url, tipos, ocasioes: ocasioesOpcoes }),
+        body: JSON.stringify({
+          fotoUrl: url,
+          tiposPrincipais: tipos,
+          subtiposConhecidos,
+          ocasioes: ocasioesOpcoes,
+        }),
       });
       if (!res.ok) {
         const dataErro = await res.json().catch(() => null);
@@ -282,12 +344,14 @@ export default function AdicionarPecaPage() {
       }
       const sugestao = await res.json();
 
+      let tipoFinal = tipo;
       if (sugestao.tipo) {
-        if (tipos.includes(sugestao.tipo)) {
-          setTipo(sugestao.tipo);
-        } else {
-          handleNovoTipo(sugestao.tipo);
-        }
+        tipoFinal = sugestao.tipo;
+        selecionarTipo(sugestao.tipo);
+      }
+
+      if (sugestao.subtipo) {
+        handleNovoSubtipo(sugestao.subtipo, tipoFinal);
       }
 
       if (Array.isArray(sugestao.ocasioes)) {
@@ -373,6 +437,7 @@ export default function AdicionarPecaPage() {
     const piece: Piece = {
       id: generateId(),
       tipo,
+      subtipo: subtipo || undefined,
       ocasioes,
       cor,
       estacoes,
@@ -455,12 +520,44 @@ export default function AdicionarPecaPage() {
         </div>
 
         <Field label="Tipo">
-          <ChipGroup options={tipos} selected={[tipo]} onToggle={(o) => setTipo(o)} />
+          <ChipGroup options={tipos} selected={[tipo]} onToggle={(o) => selecionarTipo(o)} />
           <AddChip placeholder="Novo tipo" onAdd={handleNovoTipo} />
         </Field>
 
+        {(SUBTIPOS_PADRAO[tipo] || customSubtipos[tipo]) && (
+          <Field label={`Qual tipo de ${tipo.toLowerCase()}?`}>
+            <select
+              value={subtipo}
+              onChange={(e) => setSubtipo(e.target.value)}
+              className="w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 text-sm"
+            >
+              <option value="">Selecionar...</option>
+              {[...(SUBTIPOS_PADRAO[tipo] ?? []), ...(customSubtipos[tipo] ?? [])].map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+            <AddChip placeholder="Novo subtipo" onAdd={(nome) => handleNovoSubtipo(nome)} />
+          </Field>
+        )}
+
         <Field label="Ocasião">
-          <ChipGroup options={ocasioesOpcoes} selected={ocasioes} onToggle={toggleOcasiao} />
+          <ChipGroup options={ocasioesVisiveis} selected={ocasioes} onToggle={toggleOcasiao} />
+          {ocasioesEscondidas.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setMostrarMaisOcasioes((v) => !v)}
+              className="mt-2 text-sm font-medium text-[var(--color-sage)]"
+            >
+              {mostrarMaisOcasioes ? "− ver menos" : `+ mais (${ocasioesEscondidas.length})`}
+            </button>
+          )}
+          {mostrarMaisOcasioes && ocasioesEscondidas.length > 0 && (
+            <div className="mt-2">
+              <ChipGroup options={ocasioesEscondidas} selected={ocasioes} onToggle={toggleOcasiao} />
+            </div>
+          )}
           <AddChip placeholder="Nova ocasião" onAdd={handleNovaOcasiao} />
         </Field>
 
