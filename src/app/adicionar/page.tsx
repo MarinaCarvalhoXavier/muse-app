@@ -515,7 +515,6 @@ export default function AdicionarPecaPage() {
                 <input
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   onChange={handleFotoSelecionada}
                   className="hidden"
                 />
@@ -528,7 +527,6 @@ export default function AdicionarPecaPage() {
               <input
                 type="file"
                 accept="image/*"
-                capture="environment"
                 onChange={handleFotoSelecionada}
                 className="hidden"
               />
