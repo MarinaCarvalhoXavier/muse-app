@@ -91,6 +91,80 @@ export default function AdicionarPecaPage() {
     setCor(novaCor);
   }
 
+  async function converterParaJpeg(file: File): Promise<Blob> {
+    const bitmap = await createImageBitmap(file);
+
+    // Fotos de celular costumam vir enormes (10-15MB), o que deixa o upload e
+    // o processamento da IA bem mais lentos sem ganho real de qualidade pro
+    // nosso caso. Redimensionamos pro lado maior ter no máximo 1600px.
+    const MAIOR_LADO_MAX = 1600;
+    const escala = Math.min(1, MAIOR_LADO_MAX / Math.max(bitmap.width, bitmap.height));
+    const largura = Math.round(bitmap.width * escala);
+    const altura = Math.round(bitmap.height * escala);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = largura;
+    canvas.height = altura;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Não foi possível preparar a imagem.");
+    ctx.drawImage(bitmap, 0, 0, largura, altura);
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error("Falha ao converter imagem."))),
+        "image/jpeg",
+        0.85
+      );
+    });
+  }
+
+  async function extrairCorPredominante(url: string): Promise<string | null> {
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Falha ao carregar imagem processada."));
+        img.src = url;
+      });
+
+      const TAMANHO = 80;
+      const canvas = document.createElement("canvas");
+      canvas.width = TAMANHO;
+      canvas.height = TAMANHO;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      ctx.drawImage(img, 0, 0, TAMANHO, TAMANHO);
+      const { data } = ctx.getImageData(0, 0, TAMANHO, TAMANHO);
+
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let total = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const [pr, pg, pb, pa] = [data[i], data[i + 1], data[i + 2], data[i + 3]];
+        // Ignora fundo branco/transparente (o efeito vitrine deixa a peça
+        // isolada num fundo claro) pra não distorcer a média com o fundo.
+        const quaseBranco = pr > 235 && pg > 235 && pb > 235;
+        const transparente = pa < 200;
+        if (quaseBranco || transparente) continue;
+        r += pr;
+        g += pg;
+        b += pb;
+        total++;
+      }
+
+      if (total === 0) return null;
+      const hex = (v: number) =>
+        Math.round(v / total)
+          .toString(16)
+          .padStart(2, "0");
+      return `#${hex(r)}${hex(g)}${hex(b)}`.toUpperCase();
+    } catch (err) {
+      console.error("Erro ao extrair cor predominante:", err);
+      return null;
+    }
+  }
+
   async function handleFotoSelecionada(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -101,8 +175,11 @@ export default function AdicionarPecaPage() {
     setProcessandoFoto(true);
 
     try {
+      // Fotos de celular (ex: HEIC do iPhone) não são aceitas pela Photoroom,
+      // então convertemos tudo pra JPEG antes de enviar.
+      const jpeg = await converterParaJpeg(file);
       const formData = new FormData();
-      formData.append("imageFile", file);
+      formData.append("imageFile", jpeg, "peca.jpg");
       const res = await fetch("/api/remover-fundo", {
         method: "POST",
         body: formData,
@@ -112,6 +189,10 @@ export default function AdicionarPecaPage() {
         setErroFoto(data.error || "Não foi possível processar a foto.");
       } else {
         setFotoUrl(data.url);
+        const corDetectada = await extrairCorPredominante(data.url);
+        if (corDetectada) {
+          handleNovaCor(corDetectada);
+        }
       }
     } catch (err) {
       console.error(err);

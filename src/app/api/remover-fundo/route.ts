@@ -46,7 +46,6 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers: {
         "x-api-key": apiKey,
-        "pr-edit-with-ai-model-version": "variant-g-2k",
       },
       body: photoroomForm,
     });
