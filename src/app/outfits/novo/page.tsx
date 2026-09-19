@@ -63,8 +63,8 @@ export default function NovoOutfitPage() {
           <i className="fi-rr-arrow-left" aria-hidden="true" />
         </Link>
         <div>
-          <p className="text-xs uppercase tracking-wide text-[var(--color-sage)]">Muse</p>
-          <h1 className="font-[var(--font-fraunces)] text-2xl">Novo look</h1>
+          <p className="text-xs uppercase tracking-wide text-black/40">Muse</p>
+          <h1 className="font-[var(--font-display)] text-2xl">Novo look</h1>
         </div>
       </header>
 
@@ -87,7 +87,7 @@ export default function NovoOutfitPage() {
             type="button"
             onClick={handleSalvar}
             disabled={salvando}
-            className="mt-6 w-full rounded-full bg-[var(--color-terracota)] py-2.5 text-sm font-medium text-white disabled:opacity-60"
+            className="mt-6 w-full rounded-full bg-[var(--color-lime)] py-2.5 text-sm font-medium text-[var(--color-ink)] disabled:opacity-60"
           >
             {salvando ? "Salvando..." : "Salvar look"}
           </button>

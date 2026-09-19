@@ -96,7 +96,7 @@ export default function DetalhePecaPage() {
             </button>
           </div>
 
-          <h1 className="mb-1 font-[var(--font-fraunces)] text-2xl">
+          <h1 className="mb-1 font-[var(--font-display)] text-2xl">
             {piece.tipo}
             {piece.subtipos && piece.subtipos.length > 0 && (
               <span className="text-black/40"> · {piece.subtipos.join(", ")}</span>

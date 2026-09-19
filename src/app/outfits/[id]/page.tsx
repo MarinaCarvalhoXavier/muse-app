@@ -65,7 +65,7 @@ export default function OutfitDetalhePage() {
     return (
       <main className="px-4 pb-24 pt-8">
         <p className="text-sm text-black/40">Look não encontrado.</p>
-        <Link href="/outfits" className="mt-4 inline-block text-sm text-[var(--color-terracota)]">
+        <Link href="/outfits" className="mt-4 inline-block text-sm text-black underline">
           Voltar
         </Link>
       </main>
@@ -83,8 +83,8 @@ export default function OutfitDetalhePage() {
           <i className="fi-rr-arrow-left" aria-hidden="true" />
         </Link>
         <div>
-          <p className="text-xs uppercase tracking-wide text-[var(--color-sage)]">Muse</p>
-          <h1 className="font-[var(--font-fraunces)] text-2xl">Editar look</h1>
+          <p className="text-xs uppercase tracking-wide text-black/40">Muse</p>
+          <h1 className="font-[var(--font-display)] text-2xl">Editar look</h1>
         </div>
       </header>
 
@@ -111,7 +111,7 @@ export default function OutfitDetalhePage() {
           type="button"
           onClick={handleSalvar}
           disabled={salvando}
-          className="flex-1 rounded-full bg-[var(--color-terracota)] py-2.5 text-sm font-medium text-white disabled:opacity-60"
+          className="flex-1 rounded-full bg-[var(--color-lime)] py-2.5 text-sm font-medium text-[var(--color-ink)] disabled:opacity-60"
         >
           {salvando ? "Salvando..." : "Salvar alterações"}
         </button>

@@ -26,7 +26,7 @@ export function BottomNav() {
                 key={tab.href}
                 href={tab.href}
                 aria-label="Adicionar peça"
-                className="-mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-terracota)] text-white shadow-lg shadow-black/20"
+                className="-mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-lime)] text-[var(--color-ink)] shadow-lg shadow-black/20"
               >
                 <i className={`${tab.icon} text-xl`} aria-hidden="true" />
               </Link>
@@ -38,7 +38,7 @@ export function BottomNav() {
               key={tab.href}
               href={tab.href}
               className={`flex flex-col items-center gap-0.5 px-2 py-1 text-[11px] font-medium ${
-                active ? "text-[var(--color-terracota)]" : "text-black/40"
+                active ? "text-[var(--color-ink)]" : "text-black/40"
               }`}
             >
               <i className={`${active ? tab.iconActive : tab.icon} text-lg`} aria-hidden="true" />

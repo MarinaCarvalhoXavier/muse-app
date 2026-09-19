@@ -124,8 +124,8 @@ export default function ArmarioPage() {
   return (
     <main className="px-4 pb-24 pt-8">
       <header className="mb-4">
-        <p className="text-xs uppercase tracking-wide text-[var(--color-sage)]">Muse</p>
-        <h1 className="font-[var(--font-fraunces)] text-2xl">Seu armário</h1>
+        <p className="text-xs uppercase tracking-wide text-black/40">Muse</p>
+        <h1 className="font-[var(--font-display)] text-2xl">Seu armário</h1>
         <p className="text-sm text-black/50">
           {carregando ? "Carregando…" : `${pieces.length} peças catalogadas`}
         </p>
@@ -141,7 +141,7 @@ export default function ArmarioPage() {
                 onClick={() => setFiltro(f)}
                 className={`shrink-0 rounded-full border px-4 py-1.5 text-sm ${
                   filtro === f
-                    ? "border-[var(--color-terracota)] bg-[var(--color-terracota)] text-white"
+                    ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white"
                     : "border-black/10 text-black/60"
                 }`}
               >
@@ -155,13 +155,13 @@ export default function ArmarioPage() {
             aria-label="Filtros"
             className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${
               totalFiltrosAtivos > 0
-                ? "border-[var(--color-terracota)] text-[var(--color-terracota)]"
+                ? "border-[var(--color-ink)] text-[var(--color-ink)]"
                 : "border-black/10 text-black/50"
             }`}
           >
             <i className="fi-rr-settings-sliders text-sm" aria-hidden="true" />
             {totalFiltrosAtivos > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-terracota)] text-[10px] text-white">
+              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-ink)] text-[10px] text-white">
                 {totalFiltrosAtivos}
               </span>
             )}
@@ -176,7 +176,7 @@ export default function ArmarioPage() {
             if (items.length === 0) return null;
             return (
               <section key={tipo} className="mb-8">
-                <h2 className="mb-3 font-[var(--font-fraunces)] text-lg">{tipo}</h2>
+                <h2 className="mb-3 font-[var(--font-display)] text-lg">{tipo}</h2>
                 <div className="grid grid-cols-2 gap-3">
                   {items.map((piece) => (
                     <PieceCard key={piece.id} piece={piece} onToggleFavorita={handleToggleFavorita} />
@@ -261,7 +261,7 @@ export default function ArmarioPage() {
                           onClick={() => toggleFiltroAvancado("cores", c)}
                           aria-label={c}
                           className={`h-9 w-9 rounded-full border-2 ${
-                            ativa ? "border-[var(--color-terracota)]" : "border-black/10"
+                            ativa ? "border-[var(--color-ink)]" : "border-black/10"
                           }`}
                           style={{ backgroundColor: c }}
                         />
@@ -284,7 +284,7 @@ export default function ArmarioPage() {
               <button
                 type="button"
                 onClick={() => setModalFiltrosAberto(false)}
-                className="flex-1 rounded-full bg-[var(--color-terracota)] py-2.5 text-sm font-medium text-white"
+                className="flex-1 rounded-full bg-[var(--color-lime)] py-2.5 text-sm font-medium text-[var(--color-ink)]"
               >
                 Ver resultados
               </button>
@@ -320,7 +320,7 @@ function FiltroSecao({
               onClick={() => onToggle(opcao)}
               className={`rounded-full border px-3 py-1.5 text-sm ${
                 ativa
-                  ? "border-[var(--color-terracota)] bg-[var(--color-terracota)]/10 text-[var(--color-terracota)]"
+                  ? "border-[var(--color-ink)] bg-[var(--color-ink)]/10 text-[var(--color-ink)]"
                   : "border-black/10 text-black/60"
               }`}
             >

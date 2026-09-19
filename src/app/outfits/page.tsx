@@ -31,15 +31,15 @@ export default function OutfitsPage() {
     <main className="px-4 pb-24 pt-8">
       <header className="mb-6 flex items-start justify-between">
         <div>
-          <p className="text-xs uppercase tracking-wide text-[var(--color-sage)]">Muse</p>
-          <h1 className="font-[var(--font-fraunces)] text-2xl">Outfits</h1>
+          <p className="text-xs uppercase tracking-wide text-black/40">Muse</p>
+          <h1 className="font-[var(--font-display)] text-2xl">Outfits</h1>
           <p className="text-sm text-black/50">
             {carregando ? "Carregando…" : `${outfits.length} looks salvos`}
           </p>
         </div>
         <Link
           href="/outfits/novo"
-          className="shrink-0 rounded-full border border-[var(--color-terracota)] px-3 py-1.5 text-sm text-[var(--color-terracota)]"
+          className="shrink-0 rounded-full bg-[var(--color-lime)] px-3 py-1.5 text-sm font-medium text-[var(--color-ink)]"
         >
           Novo look
         </Link>

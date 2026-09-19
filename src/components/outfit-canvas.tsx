@@ -185,7 +185,7 @@ export function OutfitCanvas({
             >
               <div
                 className={`relative ${
-                  selecionado ? "outline outline-2 outline-[var(--color-terracota)] outline-offset-2" : ""
+                  selecionado ? "outline outline-2 outline-[var(--color-ink)] outline-offset-2" : ""
                 }`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -198,7 +198,7 @@ export function OutfitCanvas({
                 {selecionado && (
                   <div
                     onPointerDown={(e) => iniciarRedimensionamento(e, item)}
-                    className="absolute -bottom-2 -right-2 flex h-6 w-6 touch-none items-center justify-center rounded-full border-2 border-white bg-[var(--color-terracota)] text-white shadow"
+                    className="absolute -bottom-2 -right-2 flex h-6 w-6 touch-none items-center justify-center rounded-full border-2 border-white bg-[var(--color-ink)] text-white shadow"
                   >
                     <i className="fi-rr-expand text-[10px]" aria-hidden="true" />
                   </div>
@@ -221,7 +221,7 @@ export function OutfitCanvas({
             type="button"
             onClick={() => removerFundoDoItem(itemSelecionado)}
             disabled={removendoFundoId === itemSelecionado.id || !!itemSelecionado.fotoSemFundoUrl}
-            className="rounded-full border border-[var(--color-sage)] px-3 py-1.5 text-xs text-[var(--color-sage)] disabled:opacity-50"
+            className="rounded-full border border-black/20 px-3 py-1.5 text-xs text-black/70 disabled:opacity-50"
           >
             {removendoFundoId === itemSelecionado.id
               ? "Removendo fundo…"
@@ -262,7 +262,7 @@ export function OutfitCanvas({
             type="button"
             onPointerDown={(e) => iniciarArrastoDaTira(e, p)}
             className={`relative h-20 w-16 shrink-0 touch-none overflow-hidden rounded-xl border bg-white ${
-              pecasNoCanvas.has(p.id) ? "border-[var(--color-terracota)]" : "border-black/10"
+              pecasNoCanvas.has(p.id) ? "border-[var(--color-ink)]" : "border-black/10"
             }`}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}

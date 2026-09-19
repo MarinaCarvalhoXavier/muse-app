@@ -17,8 +17,8 @@ export default function PerfilPage() {
   return (
     <main className="px-4 pb-24 pt-8">
       <header className="mb-6">
-        <p className="text-xs uppercase tracking-wide text-[var(--color-sage)]">Muse</p>
-        <h1 className="font-[var(--font-fraunces)] text-2xl">Perfil</h1>
+        <p className="text-xs uppercase tracking-wide text-black/40">Muse</p>
+        <h1 className="font-[var(--font-display)] text-2xl">Perfil</h1>
       </header>
 
       <div className="mb-6 grid grid-cols-2 gap-3">

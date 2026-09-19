@@ -487,8 +487,8 @@ export default function AdicionarPecaPage() {
   return (
     <main className="px-4 pb-24 pt-8">
       <header className="mb-6">
-        <p className="text-xs uppercase tracking-wide text-[var(--color-sage)]">Nova peça</p>
-        <h1 className="font-[var(--font-fraunces)] text-2xl">Adicionar peça</h1>
+        <p className="text-xs uppercase tracking-wide text-black/40">Nova peça</p>
+        <h1 className="font-[var(--font-display)] text-2xl">Adicionar peça</h1>
         <p className="mt-1 text-sm text-black/50">
           Tire uma foto da peça — a gente remove o fundo e dá um efeito de vitrine
           automaticamente.
@@ -534,7 +534,7 @@ export default function AdicionarPecaPage() {
           )}
           {erroFoto && <p className="mt-2 text-sm text-red-600">{erroFoto}</p>}
           {sugerindoTags && (
-            <p className="mt-2 flex items-center gap-1.5 text-sm text-[var(--color-sage)]">
+            <p className="mt-2 flex items-center gap-1.5 text-sm text-black/60">
               <i className="fi-rr-sparkles text-xs" aria-hidden="true" />
               Sugerindo tipo, ocasião e peso com IA…
             </p>
@@ -584,7 +584,7 @@ export default function AdicionarPecaPage() {
                 key={c}
                 onClick={() => setCor(c)}
                 className={`h-9 w-9 rounded-full border-2 ${
-                  cor === c ? "border-[var(--color-terracota)]" : "border-black/10"
+                  cor === c ? "border-[var(--color-ink)]" : "border-black/10"
                 }`}
                 style={{ backgroundColor: c }}
                 aria-label={c}
@@ -616,7 +616,7 @@ export default function AdicionarPecaPage() {
                   onClick={() => selecionarPeso(p)}
                   className={`rounded-full border px-3 py-1.5 text-sm ${
                     ativo
-                      ? "border-[var(--color-terracota)] bg-[var(--color-terracota)]/10 text-[var(--color-terracota)]"
+                      ? "border-[var(--color-ink)] bg-[var(--color-ink)]/10 text-[var(--color-ink)]"
                       : "border-black/10 text-black/60"
                   }`}
                 >
@@ -633,14 +633,14 @@ export default function AdicionarPecaPage() {
             type="checkbox"
             checked={favorita}
             onChange={(e) => setFavorita(e.target.checked)}
-            className="h-5 w-5 accent-[var(--color-terracota)]"
+            className="h-5 w-5 accent-[var(--color-ink)]"
           />
         </label>
 
         <button
           type="button"
           onClick={() => setDetalhesAbertos((v) => !v)}
-          className="text-sm font-medium text-[var(--color-sage)]"
+          className="text-sm font-medium text-black"
         >
           {detalhesAbertos ? "− menos detalhes" : "+ mais detalhes"}
         </button>
@@ -658,7 +658,7 @@ export default function AdicionarPecaPage() {
         <button
           type="submit"
           disabled={salvando || processandoFoto}
-          className="w-full rounded-full bg-[var(--color-terracota)] py-3 font-medium text-white disabled:opacity-60"
+          className="w-full rounded-full bg-[var(--color-lime)] py-3 font-medium text-[var(--color-ink)] disabled:opacity-60"
         >
           {salvando ? "Salvando..." : processandoFoto ? "Aguarde a foto..." : "Salvar no armário"}
         </button>
@@ -741,7 +741,7 @@ function CampoChips({
               onClick={() => onToggle(option)}
               className={`rounded-full border px-3 py-1.5 text-sm ${
                 active
-                  ? "border-[var(--color-terracota)] bg-[var(--color-terracota)]/10 text-[var(--color-terracota)]"
+                  ? "border-[var(--color-ink)] bg-[var(--color-ink)]/10 text-[var(--color-ink)]"
                   : "border-black/10 text-black/60"
               }`}
             >
@@ -755,7 +755,7 @@ function CampoChips({
         <button
           type="button"
           onClick={() => setExpandido((v) => !v)}
-          className="mt-2 text-sm font-medium text-[var(--color-sage)]"
+          className="mt-2 text-sm font-medium text-black"
         >
           {expandido ? "− ver menos" : "+ mais"}
         </button>
@@ -784,7 +784,7 @@ function ChipGroup({
             onClick={() => onToggle(option)}
             className={`rounded-full border px-3 py-1.5 text-sm ${
               active
-                ? "border-[var(--color-terracota)] bg-[var(--color-terracota)]/10 text-[var(--color-terracota)]"
+                ? "border-[var(--color-ink)] bg-[var(--color-ink)]/10 text-[var(--color-ink)]"
                 : "border-black/10 text-black/60"
             }`}
           >
@@ -839,7 +839,7 @@ function AddChipInline({
         <button
           type="button"
           onClick={confirmar}
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-terracota)] text-white"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-lime)] text-[var(--color-ink)]"
           aria-label="Confirmar"
         >
           <i className="fi-rr-check text-xs" aria-hidden="true" />
