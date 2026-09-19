@@ -10,7 +10,7 @@ type PieceRow = {
   tipo: string;
   subtipos: string[] | null;
   ocasioes: string[];
-  cor: string;
+  cores: string[];
   peso: string | null;
   favorita: boolean;
   marca: string | null;
@@ -33,7 +33,7 @@ function rowToPiece(row: PieceRow): Piece {
     tipo: row.tipo,
     subtipos: row.subtipos ?? [],
     ocasioes: row.ocasioes ?? [],
-    cor: row.cor,
+    cores: row.cores ?? [],
     peso: (row.peso as Peso | null) ?? undefined,
     favorita: row.favorita,
     marca: row.marca ?? undefined,
@@ -86,7 +86,7 @@ export async function addPiece(piece: Piece): Promise<{ error?: string }> {
     tipo: piece.tipo,
     subtipos: piece.subtipos ?? [],
     ocasioes: piece.ocasioes,
-    cor: piece.cor,
+    cores: piece.cores ?? [],
     peso: piece.peso ?? null,
     favorita: piece.favorita,
     marca: piece.marca ?? null,

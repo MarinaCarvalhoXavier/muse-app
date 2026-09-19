@@ -21,7 +21,7 @@ export function PieceCard({
           className="h-full w-full object-contain"
         />
       ) : (
-        <div className="h-full w-full" style={{ backgroundColor: piece.cor }} />
+        <div className="h-full w-full" style={{ backgroundColor: piece.cores?.[0] ?? "#e5e5e5" }} />
       )}
       <button
         type="button"

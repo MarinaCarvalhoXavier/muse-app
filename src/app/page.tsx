@@ -58,7 +58,7 @@ export default function ArmarioPage() {
     [pieces]
   );
   const coresDisponiveis = useMemo(
-    () => Array.from(new Set(pieces.map((p) => p.cor))),
+    () => Array.from(new Set(pieces.flatMap((p) => p.cores))),
     [pieces]
   );
   const pesosDisponiveis = useMemo(
@@ -101,7 +101,7 @@ export default function ArmarioPage() {
       if (!p.ocasioes.some((o) => filtrosAvancados.ocasioes.includes(o))) return false;
     }
     if (filtrosAvancados.cores.length > 0) {
-      if (!filtrosAvancados.cores.includes(p.cor)) return false;
+      if (!p.cores.some((c) => filtrosAvancados.cores.includes(c))) return false;
     }
     if (filtrosAvancados.pesos.length > 0) {
       if (!p.peso || !filtrosAvancados.pesos.includes(p.peso)) return false;

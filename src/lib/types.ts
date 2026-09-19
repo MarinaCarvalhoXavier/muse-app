@@ -10,7 +10,7 @@ export interface Piece {
   tipo: Tipo;
   subtipos?: string[];
   ocasioes: Ocasiao[];
-  cor: string;
+  cores: string[];
   peso?: Peso;
   favorita: boolean;
   marca?: string;

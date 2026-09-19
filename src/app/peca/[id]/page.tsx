@@ -74,7 +74,7 @@ export default function DetalhePecaPage() {
         <>
           <div
             className="relative mb-6 aspect-[3/4] w-full overflow-hidden rounded-2xl"
-            style={{ backgroundColor: piece.fotoUrl ? "#fff" : piece.cor }}
+            style={{ backgroundColor: piece.fotoUrl ? "#fff" : piece.cores?.[0] ?? "#e5e5e5" }}
           >
             {piece.fotoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -109,7 +109,23 @@ export default function DetalhePecaPage() {
           <div className="space-y-4">
             <DetalheItem label="Ocasião" valor={piece.ocasioes.join(", ") || "Nenhuma"} />
             <DetalheItem label="Peso" valor={piece.peso || "Não definido"} />
-            <DetalheItem label="Cor" valor={piece.cor} />
+            <div className="border-b border-black/5 pb-3">
+              <p className="text-xs uppercase tracking-wide text-black/40">Cor</p>
+              {piece.cores && piece.cores.length > 0 ? (
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {piece.cores.map((c) => (
+                    <span
+                      key={c}
+                      className="h-5 w-5 rounded-full border border-black/15"
+                      style={{ backgroundColor: c }}
+                      aria-label={c}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm">Nenhuma</p>
+              )}
+            </div>
             {piece.marca && <DetalheItem label="Marca" valor={piece.marca} />}
             {piece.estampa && <DetalheItem label="Estampa" valor={piece.estampa} />}
             {piece.notas && <DetalheItem label="Notas" valor={piece.notas} />}

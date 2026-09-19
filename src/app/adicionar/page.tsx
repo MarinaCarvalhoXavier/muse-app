@@ -66,7 +66,7 @@ export default function AdicionarPecaPage() {
     ...OCASIOES_PADRAO,
     ...getCustomOcasioes(),
   ]);
-  const [cores, setCores] = useState<string[]>(() => [...CORES_PADRAO, ...getCustomCores()]);
+  const [paletaCores, setPaletaCores] = useState<string[]>(() => [...CORES_PADRAO, ...getCustomCores()]);
 
   const [tipo, setTipo] = useState<Tipo>(TIPOS_PADRAO[0]);
   const [subtipos, setSubtipos] = useState<string[]>([]);
@@ -76,7 +76,7 @@ export default function AdicionarPecaPage() {
     return mapa;
   });
   const [ocasioes, setOcasioes] = useState<Ocasiao[]>([]);
-  const [cor, setCor] = useState(CORES_PADRAO[0]);
+  const [coresSelecionadas, setCoresSelecionadas] = useState<string[]>([CORES_PADRAO[0]]);
   const [peso, setPeso] = useState<Peso | null>(null);
   const [favorita, setFavorita] = useState(false);
   const [detalhesAbertos, setDetalhesAbertos] = useState(false);
@@ -136,14 +136,18 @@ export default function AdicionarPecaPage() {
     setOcasioes((prev) => [...prev, nova]);
   }
 
+  function toggleCor(c: string) {
+    setCoresSelecionadas((prev) =>
+      prev.includes(c) ? prev.filter((item) => item !== c) : [...prev, c]
+    );
+  }
+
   function handleNovaCor(novaCor: string) {
-    if (cores.includes(novaCor)) {
-      setCor(novaCor);
-      return;
+    if (!paletaCores.includes(novaCor)) {
+      setPaletaCores((prev) => [...prev, novaCor]);
+      addCustomCor(novaCor);
     }
-    setCores((prev) => [...prev, novaCor]);
-    addCustomCor(novaCor);
-    setCor(novaCor);
+    setCoresSelecionadas((prev) => (prev.includes(novaCor) ? prev : [...prev, novaCor]));
   }
 
   // A cor detectada na foto quase nunca bate exatamente com uma cor da
@@ -169,7 +173,8 @@ export default function AdicionarPecaPage() {
   }
 
   function aplicarCorDetectada(hex: string) {
-    setCor(corMaisProxima(hex));
+    const maisProxima = corMaisProxima(hex);
+    setCoresSelecionadas((prev) => (prev.includes(maisProxima) ? prev : [...prev, maisProxima]));
   }
 
   async function converterParaJpeg(file: File): Promise<Blob> {
@@ -466,7 +471,7 @@ export default function AdicionarPecaPage() {
       tipo,
       subtipos: subtipos.length > 0 ? subtipos : undefined,
       ocasioes,
-      cor,
+      cores: coresSelecionadas,
       peso: peso ?? undefined,
       favorita,
       marca: marca || undefined,
@@ -578,13 +583,15 @@ export default function AdicionarPecaPage() {
 
         <Field label="Cor">
           <div className="flex flex-wrap gap-2">
-            {cores.map((c) => (
+            {paletaCores.map((c) => (
               <button
                 type="button"
                 key={c}
-                onClick={() => setCor(c)}
+                onClick={() => toggleCor(c)}
                 className={`h-9 w-9 rounded-full border border-black/15 ${
-                  cor === c ? "ring-2 ring-[var(--color-ink)] ring-offset-2 ring-offset-[var(--color-paper)]" : ""
+                  coresSelecionadas.includes(c)
+                    ? "ring-2 ring-[var(--color-ink)] ring-offset-2 ring-offset-[var(--color-paper)]"
+                    : ""
                 }`}
                 style={{ backgroundColor: c }}
                 aria-label={c}
@@ -597,7 +604,7 @@ export default function AdicionarPecaPage() {
               <i className="fi-rr-plus-small text-sm" aria-hidden="true" />
               <input
                 type="color"
-                value={cor}
+                value={coresSelecionadas[coresSelecionadas.length - 1] ?? paletaCores[0]}
                 onChange={(e) => handleNovaCor(e.target.value)}
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
               />
