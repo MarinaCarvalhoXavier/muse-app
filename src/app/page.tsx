@@ -260,8 +260,8 @@ export default function ArmarioPage() {
                           key={c}
                           onClick={() => toggleFiltroAvancado("cores", c)}
                           aria-label={c}
-                          className={`h-9 w-9 rounded-full border-2 ${
-                            ativa ? "border-[var(--color-ink)]" : "border-black/10"
+                          className={`h-9 w-9 rounded-full border border-black/15 ${
+                            ativa ? "ring-2 ring-[var(--color-ink)] ring-offset-2 ring-offset-[var(--color-paper)]" : ""
                           }`}
                           style={{ backgroundColor: c }}
                         />
@@ -320,7 +320,7 @@ function FiltroSecao({
               onClick={() => onToggle(opcao)}
               className={`rounded-full border px-3 py-1.5 text-sm ${
                 ativa
-                  ? "border-[var(--color-ink)] bg-[var(--color-ink)]/10 text-[var(--color-ink)]"
+                  ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white"
                   : "border-black/10 text-black/60"
               }`}
             >

@@ -583,8 +583,8 @@ export default function AdicionarPecaPage() {
                 type="button"
                 key={c}
                 onClick={() => setCor(c)}
-                className={`h-9 w-9 rounded-full border-2 ${
-                  cor === c ? "border-[var(--color-ink)]" : "border-black/10"
+                className={`h-9 w-9 rounded-full border border-black/15 ${
+                  cor === c ? "ring-2 ring-[var(--color-ink)] ring-offset-2 ring-offset-[var(--color-paper)]" : ""
                 }`}
                 style={{ backgroundColor: c }}
                 aria-label={c}
@@ -616,7 +616,7 @@ export default function AdicionarPecaPage() {
                   onClick={() => selecionarPeso(p)}
                   className={`rounded-full border px-3 py-1.5 text-sm ${
                     ativo
-                      ? "border-[var(--color-ink)] bg-[var(--color-ink)]/10 text-[var(--color-ink)]"
+                      ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white"
                       : "border-black/10 text-black/60"
                   }`}
                 >
@@ -741,7 +741,7 @@ function CampoChips({
               onClick={() => onToggle(option)}
               className={`rounded-full border px-3 py-1.5 text-sm ${
                 active
-                  ? "border-[var(--color-ink)] bg-[var(--color-ink)]/10 text-[var(--color-ink)]"
+                  ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white"
                   : "border-black/10 text-black/60"
               }`}
             >
@@ -784,7 +784,7 @@ function ChipGroup({
             onClick={() => onToggle(option)}
             className={`rounded-full border px-3 py-1.5 text-sm ${
               active
-                ? "border-[var(--color-ink)] bg-[var(--color-ink)]/10 text-[var(--color-ink)]"
+                ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white"
                 : "border-black/10 text-black/60"
             }`}
           >
