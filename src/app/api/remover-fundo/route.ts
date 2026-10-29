@@ -16,23 +16,9 @@ const PROMPT =
   "never make it longer, shorter, wider or looser, and never change what kind of item it is " +
   "(short shorts stay short shorts, a cropped top stays cropped, a mini skirt stays mini).";
 
-// Instrução pro fal.ai (Gemini 2.5 Flash Image, "nano-banana"): mesma ideia da vitrine,
-// com ênfase em NÃO mudar a peça, porque modelos que redesenham a imagem podem
-// alterar estampas e detalhes.
-const PROMPT_FAL =
-  "Turn this photo into a clean e-commerce product photo of the main item only, on a plain " +
-  "pure white background, centered, front facing, sharp and well lit. If it is a clothing " +
-  "garment, show it with natural volume as if worn by an invisible person (ghost mannequin), " +
-  "never flat. If it is jewelry, a bag, shoes, a belt, glasses or another accessory, keep its " +
-  "real shape and just present it cleanly. Keep the exact same item: do not change its colors, " +
-  "prints, patterns, logos, text, buttons, materials or any detail. Remove people, hangers, " +
-  "hands and the original background. Preserve the exact length, proportions, silhouette, cut " +
-  "and hemline: never make the item longer, shorter, wider or looser than in the photo (short " +
-  "shorts must stay short shorts, a cropped top stays cropped, a mini skirt stays mini).";
-
 // Ordem de tentativa pra gerar a vitrine:
 // 1. Photoroom com chave de produção (sem marca d'água, cota grátis limitada);
-// 2. fal.ai (pago por foto, ~US$ 0,04), se FAL_KEY estiver configurada;
+// 2. fal.ai: recorte fiel da foto real (fração de centavo), se FAL_KEY estiver configurada;
 // 3. Photoroom sandbox (grátis e ilimitada, com marca d'água).
 // Pra desligar o fal.ai, basta remover FAL_KEY na Vercel e fazer Redeploy.
 //
@@ -87,36 +73,38 @@ export async function POST(req: NextRequest) {
   }
 
   // fal.ai: manda a foto como data URI e baixa o resultado pra devolver ao celular.
+  // fal.ai: RECORTE fiel (BiRefNet), sem IA generativa. Tira o fundo da foto real
+  // e o celular coloca no fundo branco. Antes usávamos um modelo generativo
+  // (Gemini 2.5 Flash Image) pra imitar a vitrine, mas ele "inventava" a peça:
+  // alongava shorts curtos e chegou a desenhar um corpo. Num armário a peça
+  // precisa ser a real, então trocamos fidelidade pelo efeito de manequim.
   async function tentarFal(chave: string): Promise<Response | null> {
-    try {
-      const bytes = Buffer.from(await (file as Blob).arrayBuffer());
-      const dataUri = `data:${(file as Blob).type || "image/jpeg"};base64,${bytes.toString("base64")}`;
-      const res = await fetch("https://fal.run/fal-ai/nano-banana/edit", {
-        method: "POST",
-        headers: { Authorization: `Key ${chave}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: PROMPT_FAL,
-          image_urls: [dataUri],
-          num_images: 1,
-          output_format: "jpeg",
-        }),
-      });
-      if (!res.ok) {
-        console.error("fal.ai retornou erro:", res.status, await res.text().catch(() => ""));
-        return null;
+    const bytes = Buffer.from(await (file as Blob).arrayBuffer());
+    const dataUri = `data:${(file as Blob).type || "image/jpeg"};base64,${bytes.toString("base64")}`;
+    for (const modelo of ["fal-ai/birefnet/v2", "fal-ai/birefnet"]) {
+      try {
+        const res = await fetch(`https://fal.run/${modelo}`, {
+          method: "POST",
+          headers: { Authorization: `Key ${chave}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ image_url: dataUri }),
+        });
+        if (!res.ok) {
+          console.error(`fal.ai (${modelo}) retornou erro:`, res.status, await res.text().catch(() => ""));
+          continue;
+        }
+        const dados = await res.json();
+        const url: string | undefined = dados?.image?.url ?? dados?.images?.[0]?.url;
+        if (!url) {
+          console.error(`fal.ai (${modelo}) não devolveu imagem:`, JSON.stringify(dados).slice(0, 300));
+          continue;
+        }
+        const imagemRes = await fetch(url);
+        if (imagemRes.ok) return imagemRes;
+      } catch (err) {
+        console.error(`Erro ao chamar fal.ai (${modelo}):`, err);
       }
-      const dados = await res.json();
-      const url: string | undefined = dados?.images?.[0]?.url;
-      if (!url) {
-        console.error("fal.ai não devolveu imagem:", JSON.stringify(dados).slice(0, 300));
-        return null;
-      }
-      const imagemRes = await fetch(url);
-      return imagemRes.ok ? imagemRes : null;
-    } catch (err) {
-      console.error("Erro ao chamar fal.ai:", err);
-      return null;
     }
+    return null;
   }
 
   let photoroomRes: Response | null = null;
@@ -158,7 +146,7 @@ export async function POST(req: NextRequest) {
 
   const descricaoModo = {
     producao: "Photoroom PRODUÇÃO (sem marca d'água)",
-    fal: "fal.ai nano-banana (pago por foto, sem marca d'água)",
+    fal: "fal.ai BiRefNet (recorte fiel da foto real, sem marca d'água)",
     sandbox: "Photoroom SANDBOX (com marca d'água)",
   }[modo];
   console.log(`Vitrine gerada com: ${descricaoModo}`);

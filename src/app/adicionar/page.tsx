@@ -105,6 +105,10 @@ function AdicionarPecaConteudo() {
   const [fotoVitrineUrl, setFotoVitrineUrl] = useState<string | null>(null);
   const [fotoRealUrl, setFotoRealUrl] = useState<string | null>(null);
   const [gerandoFotoReal, setGerandoFotoReal] = useState(false);
+  // Qual serviço gerou a imagem ("producao" = vitrine Photoroom, "fal" = recorte fiel,
+  // "sandbox" = Photoroom com marca d'água). Se já é o recorte fiel, não precisa
+  // oferecer "usar a foto real".
+  const [modoImagem, setModoImagem] = useState<string | null>(null);
   const [processandoFoto, setProcessandoFoto] = useState(false);
   const [erroFoto, setErroFoto] = useState<string | null>(null);
   const [sugerindoTags, setSugerindoTags] = useState(false);
@@ -577,6 +581,7 @@ function AdicionarPecaConteudo() {
       const jpeg = await converterParaJpeg(file);
       jpegOriginalRef.current = jpeg;
       setTemOriginalSessao(true);
+      setModoImagem(null);
       setFotoVitrineUrl(null);
       setFotoRealUrl(null);
       setUrlOriginalSalva(null);
@@ -599,6 +604,7 @@ function AdicionarPecaConteudo() {
       } else {
         // A vitrine chega direto do servidor; ajustamos a margem aqui no
         // celular e fazemos um único upload pro Supabase.
+        setModoImagem(res.headers.get("X-Photoroom-Modo"));
         const vitrine = await res.blob();
         const enquadrada = await normalizarEnquadramento(URL.createObjectURL(vitrine));
         const fotoFinal = enquadrada ?? vitrine;
@@ -769,7 +775,7 @@ function AdicionarPecaConteudo() {
             </label>
           )}
           {erroFoto && <p className="mt-2 text-sm text-red-600">{erroFoto}</p>}
-          {fotoUrl && temFotoOriginal && !processandoFoto && (
+          {fotoUrl && temFotoOriginal && !processandoFoto && modoImagem !== "fal" && (
             <div className="mt-2 flex items-center justify-center gap-2 text-xs">
               {fotoUrl === fotoRealUrl ? (
                 <>
