@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Outfit, Piece, Uso } from "@/lib/types";
+import { LookMiniatura } from "@/components/look-miniatura";
 import { getOutfits, getPieces, getUsos, hojeLocal, registrarUso, removerUso } from "@/lib/storage";
 
 // "hoje", "ontem", "há 5 dias" ou "12/10".
@@ -40,10 +41,6 @@ export default function OutfitsPage() {
       ativo = false;
     };
   }, []);
-
-  function pecaPorId(id: string) {
-    return pieces.find((p) => p.id === id);
-  }
 
   async function alternarUsoHoje(outfitId: string) {
     setErro(null);
@@ -92,24 +89,8 @@ export default function OutfitsPage() {
           return (
             <div key={o.id} className="overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm">
               <Link href={`/outfits/${o.id}`} className="block transition-transform active:scale-[0.98]">
-                <div className="relative aspect-[3/4] w-full overflow-hidden bg-black/5">
-                  {o.itens.map((item) => {
-                    const peca = pecaPorId(item.pecaId);
-                    if (!peca?.fotoUrl) return null;
-                    return (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        key={item.id}
-                        src={item.fotoSemFundoUrl ?? peca.fotoUrl}
-                        alt=""
-                        className="absolute"
-                        style={{ left: `${item.x}%`, top: `${item.y}%`, width: `${item.largura}%` }}
-                      />
-                    );
-                  })}
-                  {o.itens.length === 0 && (
-                    <p className="flex h-full items-center justify-center text-xs text-black/30">Look vazio</p>
-                  )}
+                <div className="relative aspect-[3/4] w-full overflow-hidden bg-white">
+                  <LookMiniatura look={o} pieces={pieces} />
                 </div>
                 <p className="truncate px-3 pt-2 text-sm font-medium">{o.nome}</p>
                 <p className="px-3 text-[11px] text-black/45">

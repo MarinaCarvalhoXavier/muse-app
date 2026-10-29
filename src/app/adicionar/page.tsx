@@ -14,6 +14,7 @@ import {
   addCustomTipo,
   addPiece,
   getPieceById,
+  getPieces,
   updatePiece,
   getCustomCores,
   getCustomOcasioes,
@@ -100,6 +101,41 @@ function AdicionarPecaConteudo() {
   const [erroFoto, setErroFoto] = useState<string | null>(null);
   const [sugerindoTags, setSugerindoTags] = useState(false);
   const [erroSugestao, setErroSugestao] = useState<string | null>(null);
+
+  // Tipos, subtipos e ocasiões criados pela pessoa ficavam só no aparelho onde
+  // foram criados (localStorage). Agora também lemos o que já existe nas peças
+  // salvas no banco, então eles aparecem em qualquer aparelho.
+  useEffect(() => {
+    let ativo = true;
+    getPieces().then((pecas) => {
+      if (!ativo || pecas.length === 0) return;
+      setTipos((prev) => {
+        const novos = pecas.map((p) => p.tipo).filter((t) => t && !prev.includes(t));
+        return novos.length ? [...prev, ...Array.from(new Set(novos))] : prev;
+      });
+      setCustomSubtipos((prev) => {
+        const proximo = { ...prev };
+        let mudou = false;
+        for (const p of pecas) {
+          for (const sub of p.subtipos ?? []) {
+            const conhecidos = [...(SUBTIPOS_PADRAO[p.tipo] ?? []), ...(proximo[p.tipo] ?? [])];
+            if (!conhecidos.includes(sub)) {
+              proximo[p.tipo] = [...(proximo[p.tipo] ?? []), sub];
+              mudou = true;
+            }
+          }
+        }
+        return mudou ? proximo : prev;
+      });
+      setOcasioesOpcoes((prev) => {
+        const novas = pecas.flatMap((p) => p.ocasioes).filter((o) => o && !prev.includes(o));
+        return novas.length ? [...prev, ...Array.from(new Set(novas))] : prev;
+      });
+    });
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   function toggleOcasiao(o: Ocasiao) {
     setOcasioes((prev) => (prev.includes(o) ? prev.filter((x) => x !== o) : [...prev, o]));

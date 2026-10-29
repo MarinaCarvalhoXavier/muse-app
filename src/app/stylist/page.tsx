@@ -44,7 +44,11 @@ export default function StylistPage() {
   const [carregandoSugestoes, setCarregandoSugestoes] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
-  const [ocasioesOpcoes] = useState<Ocasiao[]>(() => [...OCASIOES_PADRAO, ...getCustomOcasioes()]);
+  const [ocasioesBase] = useState<Ocasiao[]>(() => [...OCASIOES_PADRAO, ...getCustomOcasioes()]);
+  // Ocasiões padrão + as criadas pela pessoa, inclusive as que só existem nas peças salvas.
+  const ocasioesOpcoes: Ocasiao[] = Array.from(
+    new Set([...ocasioesBase, ...pieces.flatMap((p) => p.ocasioes)])
+  );
   const [ocasiaoSelecionada, setOcasiaoSelecionada] = useState<Ocasiao | null>(null);
   const [pesoSelecionado, setPesoSelecionado] = useState<Peso | null>(null);
   const [pedidoLivre, setPedidoLivre] = useState("");
