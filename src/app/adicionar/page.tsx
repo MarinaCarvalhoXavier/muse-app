@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { CORES, HEX_PADRAO, corMaisProximaDaPaleta, estiloSwatch, hexDoNome, nomeDaCor } from "@/lib/cores";
 import {
   addCustomCor,
+  limparCustomCores,
   addCustomOcasiao,
   addCustomSubtipo,
   addCustomTipo,
@@ -152,12 +153,35 @@ function AdicionarPecaConteudo() {
   }
 
   function handleNovaCor(novaCor: string) {
-    if (!paletaCores.includes(novaCor)) {
-      setPaletaCores((prev) => [...prev, novaCor]);
-      addCustomCor(novaCor);
+    const cor = novaCor.toUpperCase();
+    if (!paletaCores.some((c) => c.toUpperCase() === cor)) {
+      addCustomCor(cor);
+      setPaletaCores([...CORES_PADRAO, ...getCustomCores()]);
     }
-    setCoresSelecionadas((prev) => (prev.includes(novaCor) ? prev : [...prev, novaCor]));
+    setCoresSelecionadas((prev) => (prev.includes(cor) ? prev : [...prev, cor]));
   }
+
+  function handleLimparCoresPersonalizadas() {
+    limparCustomCores();
+    setPaletaCores([...CORES_PADRAO]);
+    setCoresSelecionadas((prev) => prev.filter((c) => CORES_PADRAO.includes(c)));
+  }
+
+  // O seletor de cor do iPhone avisa a cada movimento do dedo no espectro.
+  // Só adicionamos a cor quando o seletor fecha (evento "change" nativo), senão
+  // cada tom intermediário virava uma cor nova na paleta.
+  const corInputRef = useRef<HTMLInputElement>(null);
+  const novaCorRef = useRef(handleNovaCor);
+  useEffect(() => {
+    novaCorRef.current = handleNovaCor;
+  });
+  useEffect(() => {
+    const el = corInputRef.current;
+    if (!el) return;
+    const aoConfirmar = () => novaCorRef.current(el.value);
+    el.addEventListener("change", aoConfirmar);
+    return () => el.removeEventListener("change", aoConfirmar);
+  }, []);
 
   // Plano B: a média de pixels só entra se nem a IA nem a pessoa escolheram uma cor.
   function aplicarCorDetectada(hex: string) {
@@ -691,9 +715,9 @@ function AdicionarPecaConteudo() {
             >
               <i className="fi-rr-plus-small text-sm" aria-hidden="true" />
               <input
+                ref={corInputRef}
                 type="color"
-                value={coresSelecionadas[coresSelecionadas.length - 1] ?? paletaCores[0]}
-                onChange={(e) => handleNovaCor(e.target.value)}
+                defaultValue="#C9A54C"
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
               />
             </label>
@@ -703,6 +727,15 @@ function AdicionarPecaConteudo() {
               ? coresSelecionadas.map(nomeDaCor).join(", ")
               : "Nenhuma cor escolhida"}
           </p>
+          {paletaCores.length > CORES_PADRAO.length && (
+            <button
+              type="button"
+              onClick={handleLimparCoresPersonalizadas}
+              className="mt-1 text-xs text-black/40 underline"
+            >
+              Limpar cores personalizadas
+            </button>
+          )}
         </Field>
 
         <Field label="Peso da peça">

@@ -273,7 +273,10 @@ export async function deleteOutfit(id: string): Promise<{ error?: string }> {
 
 const CUSTOM_TIPOS_KEY = "muse:custom-tipos-v2";
 const CUSTOM_OCASIOES_KEY = "muse:custom-ocasioes";
-const CUSTOM_CORES_KEY = "muse:custom-cores-v2";
+// v3: a v2 ficou cheia de tons repetidos por causa de um bug no seletor de cor
+// (cada movimento do dedo no espectro virava uma cor nova). Trocar a chave limpa tudo.
+const CUSTOM_CORES_KEY = "muse:custom-cores-v3";
+const MAX_CORES_PERSONALIZADAS = 8;
 
 function readList(key: string): string[] {
   if (typeof window === "undefined") return [];
@@ -327,5 +330,15 @@ export function getCustomCores(): string[] {
 }
 
 export function addCustomCor(cor: string) {
-  appendToList(CUSTOM_CORES_KEY, cor);
+  if (typeof window === "undefined") return;
+  const atuais = readList(CUSTOM_CORES_KEY).filter((c) => c.toLowerCase() !== cor.toLowerCase());
+  // Guarda só as últimas cores personalizadas, pra paleta nunca encher demais.
+  const novas = [...atuais, cor].slice(-MAX_CORES_PERSONALIZADAS);
+  window.localStorage.setItem(CUSTOM_CORES_KEY, JSON.stringify(novas));
+}
+
+export function limparCustomCores() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(CUSTOM_CORES_KEY);
+  window.localStorage.removeItem("muse:custom-cores-v2");
 }
