@@ -68,7 +68,8 @@ flowchart LR
 
 ## Desafios técnicos (e como resolvi)
 
-- **Remoção de fundo junto com o efeito vitrine.** Quando as duas coisas eram pedidas numa única chamada à Photoroom, o resultado vinha com o fundo errado. Depois de algumas tentativas ajustando parâmetros, separei em duas etapas: a edição por IA gera a foto de vitrine e uma chamada de recorte simples tira o fundo das peças dentro do look.
+- **Foto de vitrine × montagem de looks.** O efeito vitrine da Photoroom devolve a peça sobre um fundo branco, o que funciona bem no Armário. Mas no canvas de looks, onde as peças ficam sobrepostas, cada uma vinha com um quadrado branco que tampava a peça de baixo. Tentei fazer a IA da Photoroom já entregar a peça sem fundo, mas isso desligava o efeito vitrine. Testei também separar em duas chamadas, o que mudaria o cadastro de todas as peças. A solução foi separar os momentos: o cadastro continua com a foto de vitrine e, dentro do look, cada peça tem um botão de "remover fundo" que faz um recorte simples (Remove Background API) só quando é preciso.
+- **Peças de tamanhos diferentes no Armário.** As imagens geradas pela IA voltavam com quantidades diferentes de espaço em branco, e algumas peças pareciam enormes e outras minúsculas. O app passou a detectar onde a peça está na imagem e recortar com a mesma margem em todas antes de salvar. Assim, o Armário fica visualmente uniforme.
 - **O app quebrou sem nenhuma mudança no código.** Depois de semanas sem uso, o cadastro de fotos passou a falhar com "fetch failed" e o Stylist com uma mensagem genérica. Pelos logs da Vercel, descobri duas causas independentes: o banco tinha sido pausado pelo plano gratuito do Supabase e a chave da API do Claude cadastrada na Vercel estava inválida. Restaurei o banco, troquei a chave e criei o keep-alive diário pra pausa não voltar a acontecer.
 
 ## Custos
