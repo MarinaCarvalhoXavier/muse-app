@@ -775,7 +775,7 @@ function AdicionarPecaConteudo() {
             </label>
           )}
           {erroFoto && <p className="mt-2 text-sm text-red-600">{erroFoto}</p>}
-          {fotoUrl && temFotoOriginal && !processandoFoto && modoImagem !== "fal" && (
+          {fotoUrl && temFotoOriginal && !processandoFoto && modoImagem !== "recorte" && (
             <div className="mt-2 flex items-center justify-center gap-2 text-xs">
               {fotoUrl === fotoRealUrl ? (
                 <>
