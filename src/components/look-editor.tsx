@@ -23,7 +23,7 @@ const LARGURA_POR_TIPO: Record<string, number> = {
   Bolsas: 24,
   Sapatos: 22,
 };
-function larguraInicial(tipo: string): number {
+export function larguraInicial(tipo: string): number {
   return LARGURA_POR_TIPO[tipo] ?? LARGURA_PADRAO;
 }
 

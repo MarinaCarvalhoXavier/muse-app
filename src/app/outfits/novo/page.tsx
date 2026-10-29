@@ -5,16 +5,25 @@ import { useRouter } from "next/navigation";
 import { Outfit, OutfitItem, Piece } from "@/lib/types";
 import { generateId } from "@/lib/id";
 import { addOutfit, getPieces } from "@/lib/storage";
-import { LookEditor } from "@/components/look-editor";
+import { LookEditor, larguraInicial } from "@/components/look-editor";
 
 export default function NovoOutfitPage() {
   const router = useRouter();
   const [pieces, setPieces] = useState<Piece[] | null>(null);
+  // "Montar look com esta peça" (menu do Armário): /outfits/novo?peca=<id>
+  const [itensIniciais, setItensIniciais] = useState<OutfitItem[]>([]);
 
   useEffect(() => {
     let ativo = true;
     getPieces().then((data) => {
-      if (ativo) setPieces(data);
+      if (!ativo) return;
+      const pecaId = new URLSearchParams(window.location.search).get("peca");
+      const peca = pecaId ? data.find((p) => p.id === pecaId) : null;
+      if (peca) {
+        const largura = larguraInicial(peca.tipo);
+        setItensIniciais([{ id: generateId(), pecaId: peca.id, x: 50 - largura / 2, y: 20, largura }]);
+      }
+      setPieces(data);
     });
     return () => {
       ativo = false;
@@ -37,7 +46,7 @@ export default function NovoOutfitPage() {
     <LookEditor
       titulo="Novo look"
       pieces={pieces}
-      itensIniciais={[]}
+      itensIniciais={itensIniciais}
       nomeInicial=""
       onSalvar={salvar}
       onFechar={() => router.push("/outfits")}

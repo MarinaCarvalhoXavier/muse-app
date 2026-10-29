@@ -3,7 +3,8 @@
 import { estiloSwatch, nomeDaCor } from "@/lib/cores";
 import { useEffect, useMemo, useState } from "react";
 import { Piece } from "@/lib/types";
-import { getPieces, updateFavorita } from "@/lib/storage";
+import { deletePiece, getPieces, updateFavorita } from "@/lib/storage";
+import { useRouter } from "next/navigation";
 import { PieceCard } from "@/components/piece-card";
 
 const ORDEM_PADRAO = ["Parte de cima", "Parte de baixo", "Vestidos", "Macacões", "Sapatos", "Bolsas", "Acessórios"];
@@ -79,6 +80,32 @@ export default function ArmarioPage() {
         prev.map((p) => (p.id === piece.id ? { ...p, favorita: piece.favorita } : p))
       );
     }
+  }
+
+  // Menu de opções ao segurar uma peça.
+  const router = useRouter();
+  const [menuPeca, setMenuPeca] = useState<Piece | null>(null);
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+  const [excluindo, setExcluindo] = useState(false);
+  const [erroMenu, setErroMenu] = useState<string | null>(null);
+
+  function abrirMenu(piece: Piece) {
+    setMenuPeca(piece);
+    setConfirmandoExclusao(false);
+    setErroMenu(null);
+  }
+
+  async function excluirPeca() {
+    if (!menuPeca) return;
+    setExcluindo(true);
+    const { error } = await deletePiece(menuPeca.id);
+    setExcluindo(false);
+    if (error) {
+      setErroMenu("Não consegui excluir agora.");
+      return;
+    }
+    setPieces((prev) => prev.filter((p) => p.id !== menuPeca.id));
+    setMenuPeca(null);
   }
 
   function toggleFiltroAvancado(categoria: keyof FiltrosAvancados, valor: string) {
@@ -180,7 +207,7 @@ export default function ArmarioPage() {
                 <h2 className="mb-3 font-[var(--font-display)] text-lg">{tipo}</h2>
                 <div className="grid grid-cols-2 gap-3">
                   {items.map((piece) => (
-                    <PieceCard key={piece.id} piece={piece} onToggleFavorita={handleToggleFavorita} />
+                    <PieceCard key={piece.id} piece={piece} onToggleFavorita={handleToggleFavorita} onSegurar={abrirMenu} />
                   ))}
                 </div>
               </section>
@@ -194,7 +221,7 @@ export default function ArmarioPage() {
         <section className="mb-8">
           <div className="grid grid-cols-2 gap-3">
             {piecesFiltradas.map((piece) => (
-              <PieceCard key={piece.id} piece={piece} onToggleFavorita={handleToggleFavorita} />
+              <PieceCard key={piece.id} piece={piece} onToggleFavorita={handleToggleFavorita} onSegurar={abrirMenu} />
             ))}
           </div>
           {piecesFiltradas.length === 0 && (
@@ -294,6 +321,55 @@ export default function ArmarioPage() {
           </div>
         </div>
       )}
+
+      {menuPeca && (
+        <div className="fixed inset-0 z-[60] mx-auto flex max-w-md flex-col justify-end">
+          <button type="button" aria-label="Fechar" onClick={() => setMenuPeca(null)} className="absolute inset-0 bg-black/30" />
+          <div className="relative rounded-t-3xl bg-white px-4 pb-[max(env(safe-area-inset-bottom),16px)] pt-2 shadow-2xl">
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-black/15" />
+            <div className="mb-2 flex items-center gap-3">
+              {menuPeca.fotoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={menuPeca.fotoUrl} alt="" className="h-14 w-11 rounded-lg border border-black/5 object-contain" />
+              )}
+              <p className="truncate font-[var(--font-display)] text-lg">
+                {[menuPeca.tipo, ...(menuPeca.subtipos ?? [])].join(" · ")}
+              </p>
+            </div>
+
+            {confirmandoExclusao ? (
+              <div className="pt-2">
+                <p className="mb-4 text-center text-sm text-black/60">
+                  Excluir esta peça? Ela também some dos looks em que aparece.
+                </p>
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setConfirmandoExclusao(false)} className="flex-1 rounded-full border border-black/15 py-2.5 text-sm font-medium">
+                    Cancelar
+                  </button>
+                  <button type="button" onClick={excluirPeca} disabled={excluindo} className="flex-1 rounded-full bg-red-600 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+                    {excluindo ? "Excluindo…" : "Excluir"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                <OpcaoMenu icone="fi-rr-pencil" rotulo="Editar peça" onClick={() => router.push(`/adicionar?editar=${menuPeca.id}`)} />
+                <OpcaoMenu
+                  icone={menuPeca.favorita ? "fi-sr-heart" : "fi-rr-heart"}
+                  rotulo={menuPeca.favorita ? "Tirar dos favoritos" : "Favoritar"}
+                  onClick={() => {
+                    handleToggleFavorita(menuPeca);
+                    setMenuPeca(null);
+                  }}
+                />
+                <OpcaoMenu icone="fi-rr-sparkles" rotulo="Montar look com esta peça" onClick={() => router.push(`/outfits/novo?peca=${menuPeca.id}`)} />
+                <OpcaoMenu icone="fi-rr-trash" rotulo="Excluir peça" perigo onClick={() => setConfirmandoExclusao(true)} />
+              </div>
+            )}
+            {erroMenu && <p className="mt-3 text-center text-sm text-red-600">{erroMenu}</p>}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
@@ -332,5 +408,30 @@ function FiltroSecao({
         })}
       </div>
     </div>
+  );
+}
+
+function OpcaoMenu({
+  icone,
+  rotulo,
+  onClick,
+  perigo,
+}: {
+  icone: string;
+  rotulo: string;
+  onClick: () => void;
+  perigo?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-3 rounded-xl px-2 py-3.5 text-left text-[15px] font-medium active:bg-black/5 ${
+        perigo ? "text-red-600" : "text-[var(--color-ink)]"
+      }`}
+    >
+      <i className={`${icone} text-lg`} aria-hidden="true" />
+      {rotulo}
+    </button>
   );
 }
