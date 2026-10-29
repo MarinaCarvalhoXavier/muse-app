@@ -271,9 +271,18 @@ export default function AdicionarPecaPage() {
       const paddingX = bLargura * MARGEM;
       const paddingY = bAltura * MARGEM;
 
+      // Foto final: no máximo 1200px no lado maior, em JPEG. Como a vitrine
+      // tem fundo branco, não precisamos de PNG (que serve pra transparência).
+      // Isso deixa cada foto ~10x mais leve (antes: 0,7–2,6 MB por peça), o
+      // que acelera o cadastro no celular e o carregamento do Armário.
+      const LADO_MAX_FINAL = 1200;
+      const larguraTotal = bLargura + paddingX * 2;
+      const alturaTotal = bAltura + paddingY * 2;
+      const escalaFinal = Math.min(1, LADO_MAX_FINAL / Math.max(larguraTotal, alturaTotal));
+
       const canvasFinal = document.createElement("canvas");
-      canvasFinal.width = Math.round(bLargura + paddingX * 2);
-      canvasFinal.height = Math.round(bAltura + paddingY * 2);
+      canvasFinal.width = Math.round(larguraTotal * escalaFinal);
+      canvasFinal.height = Math.round(alturaTotal * escalaFinal);
       const ctxFinal = canvasFinal.getContext("2d");
       if (!ctxFinal) return null;
       ctxFinal.fillStyle = "#FFFFFF";
@@ -284,14 +293,14 @@ export default function AdicionarPecaPage() {
         by,
         bLargura,
         bAltura,
-        Math.round(paddingX),
-        Math.round(paddingY),
-        bLargura,
-        bAltura
+        Math.round(paddingX * escalaFinal),
+        Math.round(paddingY * escalaFinal),
+        Math.round(bLargura * escalaFinal),
+        Math.round(bAltura * escalaFinal)
       );
 
       return new Promise((resolve) => {
-        canvasFinal.toBlob((blob) => resolve(blob), "image/png");
+        canvasFinal.toBlob((blob) => resolve(blob), "image/jpeg", 0.85);
       });
     } catch (err) {
       console.error("Erro ao normalizar enquadramento:", err);
@@ -451,10 +460,10 @@ export default function AdicionarPecaPage() {
         let urlFinal = data.url;
         const enquadrada = await normalizarEnquadramento(data.url);
         if (enquadrada) {
-          const nomeArquivo = `${generateId()}.png`;
+          const nomeArquivo = `${generateId()}.jpg`;
           const { error: uploadError } = await supabase.storage
             .from("fotos-pecas")
-            .upload(nomeArquivo, enquadrada, { contentType: "image/png" });
+            .upload(nomeArquivo, enquadrada, { contentType: "image/jpeg" });
           if (!uploadError) {
             const { data: publicUrlData } = supabase.storage
               .from("fotos-pecas")
@@ -463,7 +472,10 @@ export default function AdicionarPecaPage() {
           }
         }
         setFotoUrl(urlFinal);
-        const corDetectada = await extrairCorPredominante(urlFinal);
+        // A cor é lida da imagem que já está na memória do celular, sem baixar de novo.
+        const corDetectada = await extrairCorPredominante(
+          enquadrada ? URL.createObjectURL(enquadrada) : urlFinal
+        );
         if (corDetectada) {
           aplicarCorDetectada(corDetectada);
         }
