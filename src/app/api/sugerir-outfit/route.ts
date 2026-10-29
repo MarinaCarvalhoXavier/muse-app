@@ -134,7 +134,9 @@ export async function POST(req: NextRequest) {
       "isso signifique repetir alguma peça. Se o armário não tiver peças suficientes ou compatíveis com o " +
       "pedido, retorne menos sugestões (inclusive zero).\n\n" +
       "Responda APENAS com um JSON válido, sem texto antes ou depois, no formato:\n" +
-      '{"sugestoes": [{"pecaIds": ["id1", "id2"], "observacao": "frase curta em português explicando o look"}]}';
+      '{"sugestoes": [{"pecaIds": ["id1", "id2"], "nome": "nome curto do look", "observacao": "frase curta em português explicando o look"}]}\n' +
+      "O campo nome deve ter de 2 a 4 palavras, em português, como um título de look (ex: \"Trabalho em azul\", " +
+      "\"Noite de festa\", \"Casual com couro\"). Não descreva cores das peças no nome se não tiver certeza delas.";
 
     const resultado = await chamarClaude(apiKey, prompt, 900);
     const idsValidos = new Set(pecas.map((p) => p.id));
@@ -142,17 +144,18 @@ export async function POST(req: NextRequest) {
     const sugestoes = sugestoesBrutas
       .map((s: unknown) => {
         if (!s || typeof s !== "object") return null;
-        const obj = s as { pecaIds?: unknown; observacao?: unknown };
+        const obj = s as { pecaIds?: unknown; observacao?: unknown; nome?: unknown };
         const pecaIds = Array.isArray(obj.pecaIds)
           ? obj.pecaIds.filter((id): id is string => typeof id === "string" && idsValidos.has(id))
           : [];
         if (pecaIds.length === 0) return null;
         return {
           pecaIds,
+          nome: typeof obj.nome === "string" ? obj.nome.trim().slice(0, 40) : "",
           observacao: typeof obj.observacao === "string" ? obj.observacao : "",
         };
       })
-      .filter((s: unknown): s is { pecaIds: string[]; observacao: string } => s !== null);
+      .filter((s: unknown): s is { pecaIds: string[]; nome: string; observacao: string } => s !== null);
 
     return NextResponse.json({ sugestoes });
   } catch (err) {

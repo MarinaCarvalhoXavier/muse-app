@@ -32,7 +32,7 @@ export default function OutfitsPage() {
       <header className="mb-6 flex items-start justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-black/40">Muse</p>
-          <h1 className="font-[var(--font-display)] text-2xl">Outfits</h1>
+          <h1 className="font-[var(--font-display)] text-2xl">Looks</h1>
           <p className="text-sm text-black/50">
             {carregando ? "Carregando…" : `${outfits.length} looks salvos`}
           </p>

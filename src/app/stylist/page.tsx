@@ -11,6 +11,7 @@ const PESOS: Peso[] = ["Leve", "Neutra", "Quente"];
 type Sugestao = {
   localId: string;
   pecaIds: string[];
+  nome: string;
   observacao: string;
 };
 
@@ -111,11 +112,14 @@ export default function StylistPage() {
         setErro(data.error || "Não consegui gerar sugestões agora.");
         return;
       }
-      const novas: Sugestao[] = (data.sugestoes ?? []).map((s: { pecaIds: string[]; observacao: string }) => ({
-        localId: generateId(),
-        pecaIds: s.pecaIds,
-        observacao: s.observacao,
-      }));
+      const novas: Sugestao[] = (data.sugestoes ?? []).map(
+        (s: { pecaIds: string[]; nome?: string; observacao: string }) => ({
+          localId: generateId(),
+          pecaIds: s.pecaIds,
+          nome: s.nome ?? "",
+          observacao: s.observacao,
+        })
+      );
       if (novas.length === 0) {
         setErro("Não encontrei uma combinação boa com esses critérios. Tenta ajustar o pedido.");
       }
@@ -176,7 +180,8 @@ export default function StylistPage() {
     setErro(null);
     const outfit: Outfit = {
       id: generateId(),
-      nome: sugestao.observacao || "Sugestão da Stylist IA",
+      // Nome curto gerado pela IA (a frase longa fica só como explicação na tela).
+      nome: sugestao.nome || "Sugestão da Stylist IA",
       itens: distribuirEmGrade(sugestao.pecaIds),
       criadoEm: new Date().toISOString(),
     };
@@ -198,8 +203,9 @@ export default function StylistPage() {
       </header>
 
       <div className="mb-6 rounded-2xl border border-black/10 p-4">
-        <p className="mb-2 text-xs uppercase tracking-wide text-black/40">Pedir um look</p>
-        <div className="mb-2 flex flex-wrap gap-2">
+        <p className="mb-3 text-xs uppercase tracking-wide text-black/40">Pedir um look</p>
+        <p className="mb-1.5 text-xs font-medium text-black/60">Ocasião</p>
+        <div className="mb-3 flex flex-wrap gap-2">
           {ocasioesOpcoes.map((o) => (
             <button
               key={o}
@@ -215,6 +221,7 @@ export default function StylistPage() {
             </button>
           ))}
         </div>
+        <p className="mb-1.5 text-xs font-medium text-black/60">Peso da roupa</p>
         <div className="mb-3 flex flex-wrap gap-2">
           {PESOS.map((p) => (
             <button
@@ -257,7 +264,10 @@ export default function StylistPage() {
         <div className="space-y-5">
           {sugestoes.map((sugestao) => (
             <div key={sugestao.localId} className="rounded-2xl border border-black/10 p-4">
-              {sugestao.observacao && <p className="mb-3 text-sm text-black/70">{sugestao.observacao}</p>}
+              {sugestao.nome && (
+                <p className="mb-1 font-[var(--font-display)] text-lg leading-tight">{sugestao.nome}</p>
+              )}
+              {sugestao.observacao && <p className="mb-3 text-sm text-black/60">{sugestao.observacao}</p>}
               <div className="mb-3 flex flex-wrap gap-3">
                 {sugestao.pecaIds.map((pecaId) => {
                   const peca = pecaPorId(pecaId);
@@ -286,7 +296,7 @@ export default function StylistPage() {
                 })}
               </div>
               {salvosLocalIds.has(sugestao.localId) ? (
-                <p className="text-center text-sm font-medium text-black/50">Salvo em Outfits ✓</p>
+                <p className="text-center text-sm font-medium text-black/50">Salvo em Looks ✓</p>
               ) : (
                 <button
                   type="button"
@@ -294,7 +304,7 @@ export default function StylistPage() {
                   disabled={salvandoLocalId === sugestao.localId}
                   className="w-full rounded-full border border-[var(--color-ink)] py-2 text-sm font-medium text-[var(--color-ink)] disabled:opacity-60"
                 >
-                  {salvandoLocalId === sugestao.localId ? "Salvando…" : "Salvar como outfit"}
+                  {salvandoLocalId === sugestao.localId ? "Salvando…" : "Salvar look"}
                 </button>
               )}
             </div>

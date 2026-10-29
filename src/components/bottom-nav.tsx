@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 const tabs = [
   { href: "/", label: "Armário", icon: "fi-rr-clothes-hanger", iconActive: "fi-sr-clothes-hanger" },
-  { href: "/outfits", label: "Outfits", icon: "fi-rr-sparkles", iconActive: "fi-sr-sparkles" },
+  { href: "/outfits", label: "Looks", icon: "fi-rr-sparkles", iconActive: "fi-sr-sparkles" },
   { href: "/adicionar", label: "", icon: "fi-sr-plus", central: true },
   { href: "/stylist", label: "Stylist IA", icon: "fi-rr-robot", iconActive: "fi-sr-robot" },
   { href: "/perfil", label: "Perfil", icon: "fi-rr-user", iconActive: "fi-sr-user" },
