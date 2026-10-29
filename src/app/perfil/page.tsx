@@ -2,20 +2,22 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getOutfits, getPieces } from "@/lib/storage";
-import { Outfit, Piece } from "@/lib/types";
+import { getOutfits, getPieces, getUsos } from "@/lib/storage";
+import { Outfit, Piece, Uso } from "@/lib/types";
 import { FiltroTipos, TODAS, filtrarPorTipo } from "@/components/filtro-tipos";
 
 export default function PerfilPage() {
   const [pecas, setPecas] = useState<Piece[]>([]);
   const [looks, setLooks] = useState<Outfit[]>([]);
+  const [usos, setUsos] = useState<Uso[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [tipoFiltro, setTipoFiltro] = useState<string>(TODAS);
 
   useEffect(() => {
-    Promise.all([getPieces(), getOutfits()]).then(([p, o]) => {
+    Promise.all([getPieces(), getOutfits(), getUsos()]).then(([p, o, u]) => {
       setPecas(p);
       setLooks(o);
+      setUsos(u.usos);
       setCarregando(false);
     });
   }, []);
@@ -26,6 +28,14 @@ export default function PerfilPage() {
   const esquecidas = pecas.filter((p) => !idsEmLooks.has(p.id));
   const favoritas = pecas.filter((p) => p.favorita).length;
   const esquecidasFiltradas = filtrarPorTipo(esquecidas, tipoFiltro);
+
+  // Uso real (botão "Usei hoje" nos looks): quanto do armário foi de fato vestido.
+  const pecasVestidas = new Set(
+    usos.flatMap((u) => looks.find((l) => l.id === u.outfitId)?.itens.map((i) => i.pecaId) ?? [])
+  );
+  const vestidasNoArmario = pecas.filter((p) => pecasVestidas.has(p.id)).length;
+  const percentualVestido = pecas.length > 0 ? Math.round((vestidasNoArmario / pecas.length) * 100) : 0;
+  const primeiroUso = usos.length > 0 ? usos[usos.length - 1].usadoEm : null;
 
   return (
     <main className="px-4 pb-24 pt-8">
@@ -39,6 +49,31 @@ export default function PerfilPage() {
         <Stat valor={looks.length} legenda="looks" carregando={carregando} />
         <Stat valor={favoritas} legenda="favoritas" carregando={carregando} />
       </div>
+
+      <section className="mb-8 rounded-2xl border border-black/5 bg-white p-4">
+        <h2 className="font-[var(--font-display)] text-xl">Seu uso</h2>
+        {carregando ? (
+          <p className="mt-1 text-sm text-black/40">Carregando…</p>
+        ) : usos.length === 0 ? (
+          <p className="mt-1 text-sm text-black/50">
+            Marque &quot;Usei hoje&quot; nos seus looks pra ver aqui quanto do seu armário você realmente veste.
+          </p>
+        ) : (
+          <>
+            <p className="mt-1 text-sm text-black/50">
+              Desde {primeiroUso?.split("-").reverse().slice(0, 2).join("/")}:{" "}
+              {usos.length === 1 ? "1 look usado" : `${usos.length} looks usados`}
+            </p>
+            <p className="mt-3 text-3xl font-semibold">{percentualVestido}%</p>
+            <p className="text-xs text-black/50">
+              do armário já foi vestido ({vestidasNoArmario} de {pecas.length} peças)
+            </p>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/5">
+              <div className="h-full rounded-full bg-[var(--color-lime)]" style={{ width: `${percentualVestido}%` }} />
+            </div>
+          </>
+        )}
+      </section>
 
       <section>
         <h2 className="font-[var(--font-display)] text-xl">Peças esquecidas</h2>

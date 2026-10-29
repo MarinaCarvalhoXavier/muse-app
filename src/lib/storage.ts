@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { Ocasiao, Outfit, OutfitItem, Peso, Piece, Tipo } from "./types";
+import { Ocasiao, Outfit, OutfitItem, Peso, Piece, Tipo, Uso } from "./types";
 
 // ---------------------------------------------------------------------------
 // Peças e looks — persistidos no Supabase
@@ -140,6 +140,59 @@ export async function deletePiece(id: string): Promise<{ error?: string }> {
   const { error } = await supabase.from("pieces").delete().eq("id", id);
   if (error) {
     console.error("Erro ao excluir peça:", error.message);
+    return { error: error.message };
+  }
+  return {};
+}
+
+// ---------------------------------------------------------------------------
+// "Usei hoje": registro de uso dos looks
+// ---------------------------------------------------------------------------
+
+/** Data de hoje no horário do aparelho, no formato AAAA-MM-DD. */
+export function hojeLocal(): string {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+export async function getUsos(): Promise<{ usos: Uso[]; tabelaExiste: boolean }> {
+  const { data, error } = await supabase
+    .from("usos")
+    .select("id, outfit_id, usado_em")
+    .order("usado_em", { ascending: false });
+  if (error) {
+    console.error("Erro ao buscar usos:", error.message);
+    return { usos: [], tabelaExiste: false };
+  }
+  return {
+    usos: (data as { id: string; outfit_id: string; usado_em: string }[]).map((r) => ({
+      id: r.id,
+      outfitId: r.outfit_id,
+      usadoEm: r.usado_em,
+    })),
+    tabelaExiste: true,
+  };
+}
+
+export async function registrarUso(outfitId: string, dia: string): Promise<{ uso?: Uso; error?: string }> {
+  const { data, error } = await supabase
+    .from("usos")
+    .upsert({ outfit_id: outfitId, usado_em: dia }, { onConflict: "outfit_id,usado_em" })
+    .select("id, outfit_id, usado_em")
+    .single();
+  if (error) {
+    console.error("Erro ao registrar uso:", error.message);
+    return { error: error.message };
+  }
+  return { uso: { id: data.id, outfitId: data.outfit_id, usadoEm: data.usado_em } };
+}
+
+export async function removerUso(outfitId: string, dia: string): Promise<{ error?: string }> {
+  const { error } = await supabase.from("usos").delete().eq("outfit_id", outfitId).eq("usado_em", dia);
+  if (error) {
+    console.error("Erro ao remover uso:", error.message);
     return { error: error.message };
   }
   return {};

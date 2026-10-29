@@ -35,3 +35,10 @@ export interface Outfit {
   itens: OutfitItem[];
   criadoEm: string;
 }
+
+// Um registro de "Usei hoje": o look foi usado nesse dia (AAAA-MM-DD, horário local).
+export interface Uso {
+  id: string;
+  outfitId: string;
+  usadoEm: string;
+}
