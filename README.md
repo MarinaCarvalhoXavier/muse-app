@@ -33,7 +33,7 @@ O MUSE ataca a primeira com um armário visual e organizado e a segunda com o **
 
 São três pontos de IA. Cada um tem uma função específica e passa por uma validação antes de chegar na tela.
 
-1. **Foto de catálogo (Photoroom API).** A foto passa pela edição por IA da Photoroom, que remove o fundo e gera um efeito "manequim invisível", como em loja online. Antes do envio, o app converte a foto pra JPEG, porque o formato HEIC do iPhone não é aceito.
+1. **Foto de catálogo (Photoroom API).** A foto passa pela edição por IA da Photoroom, que remove o fundo e gera um efeito "manequim invisível", como em loja online. Antes do envio, o app converte a foto pra JPEG, porque o formato HEIC do iPhone não é aceito. **Cadeia de reserva:** primeiro a Photoroom com chave de produção (sem marca d'água, cota grátis mensal); quando a cota acaba, o **fal.ai** (Gemini 2.5 Flash Image, ~US$ 0,04 por foto, com instrução pra não alterar estampas e detalhes); e, por último, a Photoroom sandbox (grátis, com marca d'água). O cadastro nunca quebra por falta de cota.
 2. **Preenchimento automático dos campos (Claude Haiku 4.5, com visão).** A foto original (reduzida) vai pro Claude **ao mesmo tempo** que a foto vai pra Photoroom junto com as categorias e ocasiões que *a própria usuária* já usa, e ele devolve um JSON com tipo, subtipos, ocasiões e peso. O app aceita só valores da lista de opções. A cor é detectada no próprio navegador, sem IA, analisando os pixels da imagem.
 3. **Stylist IA (Claude Haiku 4.5).** O armário vai pro Claude como uma lista de texto (id, tipo, cores, ocasiões, peso), sem as imagens, o que deixa a chamada mais barata e rápida. Ele devolve os looks como listas de ids, com um nome curto e uma frase explicando a combinação. **O servidor descarta qualquer id que não exista no armário**, então a IA não consegue "inventar" uma peça que você não tem.
 
@@ -59,6 +59,7 @@ flowchart LR
 - **Vercel** (hospedagem, rotas de API e Cron)
 - **Claude API** (modelo `claude-haiku-4-5`)
 - **Photoroom API** (Image Editing v2 e Remove Background v1)
+- **fal.ai** (Gemini 2.5 Flash Image, como alternativa paga por foto)
 
 ## Decisões de produto
 
@@ -103,7 +104,7 @@ npm install
 npm run dev
 ```
 
-Variáveis necessárias: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `PHOTOROOM_API_KEY` (chave sandbox da Photoroom) e `ANTHROPIC_API_KEY`. Opcional: `PHOTOROOM_LIVE_API_KEY` (chave de produção, sem marca d'água; o app usa essa primeiro e volta pra sandbox sozinho quando a cota acaba). Os scripts SQL do banco ficam na pasta `supabase/`. Rode primeiro o `schema.sql` e o `storage.sql`, depois as migrações.
+Variáveis necessárias: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `PHOTOROOM_API_KEY` (chave sandbox da Photoroom) e `ANTHROPIC_API_KEY`. Opcionais: `PHOTOROOM_LIVE_API_KEY` (chave de produção, sem marca d'água; o app usa essa primeiro) e `FAL_KEY` (fal.ai, usado quando a cota da Photoroom acaba). Os scripts SQL do banco ficam na pasta `supabase/`. Rode primeiro o `schema.sql` e o `storage.sql`, depois as migrações.
 
 ---
 
