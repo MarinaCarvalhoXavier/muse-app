@@ -1,36 +1,107 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MUSA: guarda-roupa digital com IA
 
-## Getting Started
+Um app pessoal que transforma fotos de roupas em um armário digital organizado e usa IA para sugerir looks com as peças que você **já tem**.
 
-First, run the development server:
+**App publicado:** [muse-app-sooty.vercel.app](https://muse-app-sooty.vercel.app). Ele foi pensado pra uso no celular e eu uso adicionado à tela inicial do iPhone.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+> Projeto construído do zero por mim (designer, iniciante em programação), com a ajuda do Claude como par de programação: da discovery ao app publicado.
+
+---
+
+## O problema
+
+Quem tem muita roupa costuma repetir sempre os mesmos looks, porque é difícil **lembrar e visualizar** tudo o que tem. Isso vale principalmente pra acessórios e sapatos. A pesquisa secundária que fiz na discovery apontou que a maioria das pessoas usa regularmente só uma pequena parte do próprio guarda-roupa.
+
+A discovery separou duas dores diferentes:
+
+1. **Falta de visão:** a pessoa não lembra o que tem.
+2. **Preguiça de decidir:** mesmo sabendo o que tem, falta energia pra combinar.
+
+O MUSA ataca a primeira com um armário visual e organizado e a segunda com o **Stylist IA**.
+
+## O que o app faz
+
+| Fluxo | Como funciona |
+|---|---|
+| **Cadastrar peça por foto** | Você tira uma foto ou escolhe da galeria. O app remove o fundo, aplica um efeito "foto de vitrine", detecta a cor predominante e a IA sugere tipo, subtipo, ocasião e peso da peça. Você revisa e salva. |
+| **Armário** | Peças agrupadas por tipo, com filtros por subtipo, ocasião, cor e peso, e uma opção de favoritar. |
+| **Montar look** | Um canvas livre: você arrasta, redimensiona e organiza as peças em camadas pra montar o look e salvar. |
+| **Stylist IA** | Você escolhe ocasião e peso, ou escreve um pedido livre, e a IA monta até 3 looks **só com peças do seu armário**. Cada peça da sugestão pode ser trocada individualmente, e o look pode ser salvo. |
+
+## Como a IA é usada
+
+São três pontos de IA. Cada um tem uma função específica e passa por uma validação antes de chegar na tela.
+
+1. **Foto de catálogo (Photoroom API).** A foto passa pela edição por IA da Photoroom, que remove o fundo e gera um efeito "manequim invisível", como em loja online. Antes do envio, o app converte a foto pra JPEG, porque o formato HEIC do iPhone não é aceito.
+2. **Preenchimento automático dos campos (Claude Haiku 4.5, com visão).** A foto já tratada vai pro Claude junto com as categorias e ocasiões que *a própria usuária* já usa, e ele devolve um JSON com tipo, subtipos, ocasiões e peso. O app aceita só valores da lista de opções. A cor é detectada no próprio navegador, sem IA, analisando os pixels da imagem.
+3. **Stylist IA (Claude Haiku 4.5).** O armário vai pro Claude como uma lista de texto (id, tipo, cores, ocasiões, peso), sem as imagens, o que deixa a chamada mais barata e rápida. Ele devolve os looks como listas de ids. **O servidor descarta qualquer id que não exista no armário**, então a IA não consegue "inventar" uma peça que você não tem.
+
+## Arquitetura
+
+```mermaid
+flowchart LR
+    U[iPhone / navegador] --> N[Next.js na Vercel]
+    N -->|rotas de API no servidor| P[Photoroom API<br/>fundo + vitrine]
+    N -->|rotas de API no servidor| C[Claude API<br/>tags + Stylist]
+    N --> S[(Supabase<br/>Postgres + Storage)]
+    V[Vercel Cron diário] -->|/api/keep-alive| S
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- As **chaves das APIs ficam só no servidor** (variáveis de ambiente da Vercel). O navegador nunca vê as chaves da Photoroom nem da Anthropic.
+- **Supabase:** a tabela `pieces` guarda as peças, `outfits` guarda os looks (com a posição de cada peça no canvas) e o bucket `fotos-pecas` guarda as imagens.
+- **Keep-alive:** o plano gratuito do Supabase pausa o projeto depois de ~7 dias sem uso. Um Cron da Vercel chama `/api/keep-alive` todo dia pra manter o banco ativo.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Next.js** (App Router) + **TypeScript** + **Tailwind CSS v4**
+- **Supabase** (Postgres + Storage)
+- **Vercel** (hospedagem, rotas de API e Cron)
+- **Claude API** (modelo `claude-haiku-4-5`)
+- **Photoroom API** (Image Editing v2 e Remove Background v1)
 
-## Learn More
+## Decisões de produto
 
-To learn more about Next.js, take a look at the following resources:
+- **Trocar peça por peça, em vez de aceitar ou recusar o look inteiro.** A discovery mostrou que a usuária confia na IA de forma *condicional*: ela usa a sugestão como ponto de partida e ajusta alguma coisa. Por isso, cada peça sugerida tem o próprio botão de troca. Um "aceitar/recusar tudo" obrigaria a descartar um look bom por causa de uma peça só.
+- **"Peso da peça" no lugar de "estação do ano".** Em Recife quase não existem estações marcadas, então classificar por verão ou inverno não fazia sentido. Troquei por *Leve / Neutra / Quente*, que é como eu realmente escolho a roupa.
+- **A IA sugere e você confirma.** Os campos preenchidos pela IA são sempre editáveis antes de salvar. As categorias, subtipos e ocasiões são personalizáveis, e a IA é instruída a reaproveitar o vocabulário que *você* já criou.
+- **Começar manual e automatizar depois.** O roadmap foi V1 (cadastro manual + looks), depois V2 (foto de vitrine + tags por IA) e depois V3 (Stylist). O Stylist só fica bom quando o armário já tem dados bem estruturados, então ele veio por último.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Desafios técnicos (e como resolvi)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Remoção de fundo junto com o efeito vitrine.** Quando as duas coisas eram pedidas numa única chamada à Photoroom, o resultado vinha com o fundo errado. Depois de algumas tentativas ajustando parâmetros, separei em duas etapas: a edição por IA gera a foto de vitrine e uma chamada de recorte simples tira o fundo das peças dentro do look.
+- **O app quebrou sem nenhuma mudança no código.** Depois de semanas sem uso, o cadastro de fotos passou a falhar com "fetch failed" e o Stylist com uma mensagem genérica. Pelos logs da Vercel, descobri duas causas independentes: o banco tinha sido pausado pelo plano gratuito do Supabase e a chave da API do Claude cadastrada na Vercel estava inválida. Restaurei o banco, troquei a chave e criei o keep-alive diário pra pausa não voltar a acontecer.
 
-## Deploy on Vercel
+## Custos
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Para uso pessoal (uma usuária), o custo é praticamente zero:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Claude API:** ~US$ 0,12 no total desde o início do projeto (US$ 5 de crédito inicial, saldo de US$ 4,88 em 28/10/2026).
+- **Supabase e Vercel:** planos gratuitos.
+- **Photoroom:** modo sandbox, que é gratuito mas coloca marca d'água nas fotos.
+
+## Limitações conhecidas
+
+- **Sem login:** o app foi feito pra uma única usuária. As regras de acesso do banco estão abertas e precisam passar a filtrar por usuário antes de o app ter outras pessoas usando.
+- **Marca d'água nas fotos**, enquanto a Photoroom estiver no modo sandbox.
+- Testado até agora só por mim.
+
+## Próximos passos
+
+- Login e dados separados por usuária, pra abrir o app pra outras pessoas.
+- Registrar quando um look foi usado, pra mostrar peças esquecidas e quantas vezes cada uma foi usada.
+- A IA aprender o estilo da usuária a partir dos looks salvos.
+- **"Achados":** fotografar um look visto na rua e encontrar peças parecidas, cruzando primeiro com o que já existe no armário.
+
+## Rodando localmente
+
+```bash
+npm install
+cp .env.local.example .env.local   # preencha com as suas chaves
+npm run dev
+```
+
+Variáveis necessárias: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `PHOTOROOM_API_KEY` e `ANTHROPIC_API_KEY`. Os scripts SQL do banco ficam na pasta `supabase/`. Rode primeiro o `schema.sql` e o `storage.sql`, depois as migrações.
+
+---
+
+Feito por **Marina Carvalho Xavier**, estudante de Design na UFPE.
