@@ -34,7 +34,7 @@ O MUSE ataca a primeira com um armário visual e organizado e a segunda com o **
 
 São quatro pontos de IA. Cada um tem uma função específica e passa por uma validação antes de chegar na tela.
 
-1. **Foto de vitrine (geração de imagem).** A foto vira uma imagem de catálogo, com a peça "vestida" por um manequim invisível. Isso funciona com uma **cadeia de fornecedores**: primeiro a **Photoroom** com chave de produção (sem marca d'água, cota grátis mensal); quando a cota acaba, o **fal.ai** com **Gemini 2.5 Flash Image** (~US$ 0,04 por foto, com instrução pra não alterar cores, estampas, logos e botões); e, por último, a Photoroom sandbox (grátis, com marca d'água). O cadastro nunca quebra por falta de cota, e os logs registram qual serviço gerou cada foto.
+1. **Foto de vitrine.** A foto vira uma imagem de catálogo. Isso funciona com uma **cadeia de fornecedores**: primeiro a **Photoroom** com chave de produção (manequim invisível, sem marca d'água, cota grátis mensal); quando a cota acaba, o **fal.ai BiRefNet**, que só **recorta o fundo da foto real** (fiel à peça, fração de centavo); e, por último, a Photoroom sandbox (grátis, com marca d'água). Se a vitrine da Photoroom alterar a peça, o botão **"A IA mudou a peça? Usar a foto real"** troca pela versão recortada. O cadastro nunca quebra por falta de cota, e os logs registram qual serviço gerou cada foto.
 2. **Preenchimento automático (Claude Haiku 4.5, com visão).** A foto original (reduzida) vai pro Claude **ao mesmo tempo** que vai pra geração da vitrine, junto com as categorias e ocasiões que *a própria usuária* já usa. Ele devolve um JSON com tipo, subtipos, ocasiões, peso e **1–2 cores escolhidas de uma paleta com nomes** (com regras como "metal amarelado é Dourado"). O app aceita só valores das listas. A cor por média de pixels ficou só como plano B.
 3. **Recorte automático nos looks (fal.ai BiRefNet).** Ao entrar num look, cada peça tem o fundo removido sozinha, pra que as peças possam se sobrepor sem quadrados brancos. **Cada foto é recortada uma vez só**: o recorte fica guardado e é reaproveitado em todos os looks, sem custo.
 4. **Stylist IA e "Trocar com IA" (Claude Haiku 4.5).** O armário vai pro Claude como uma lista de texto (id, tipo, cores pelo nome, ocasiões, peso), sem imagens, o que deixa a chamada mais barata e rápida. Ele devolve looks como listas de ids, com um nome curto e uma frase explicando a combinação; no editor, sugere a substituta de uma peça mantendo o resto do look. **O servidor descarta qualquer id que não exista no armário**, então a IA não consegue "inventar" uma peça que você não tem.
@@ -45,7 +45,7 @@ São quatro pontos de IA. Cada um tem uma função específica e passa por uma v
 flowchart LR
     U[iPhone / navegador] --> N[Next.js na Vercel]
     N -->|vitrine| P[Photoroom<br/>cota grátis]
-    N -->|vitrine reserva + recorte| F[fal.ai<br/>Gemini 2.5 Flash Image · BiRefNet]
+    N -->|recorte fiel| F[fal.ai<br/>BiRefNet]
     N -->|campos, cores, Stylist| C[Claude API<br/>Haiku 4.5]
     N --> S[(Supabase<br/>Postgres + Storage)]
     V[Vercel Cron diário] -->|/api/keep-alive| S
@@ -61,7 +61,7 @@ flowchart LR
 - **Supabase** (Postgres + Storage)
 - **Vercel** (hospedagem, rotas de API e Cron)
 - **Claude API** (`claude-haiku-4-5`)
-- **fal.ai** (Gemini 2.5 Flash Image e BiRefNet)
+- **fal.ai** (BiRefNet, recorte de fundo)
 - **Photoroom API** (Image Editing v2)
 
 ## Decisões de produto
@@ -75,7 +75,7 @@ flowchart LR
 
 ## Desafios técnicos (e como resolvi)
 
-- **Marca d'água × custo.** O plano da Photoroom que gera a vitrine custa US$ 100/mês, o que não faz sentido pra um app pessoal. Usei primeiro a cota grátis da chave de produção (10 fotos/mês), com volta automática pra sandbox quando ela acaba. Depois pesquisei alternativas pagas por foto e adotei o Gemini 2.5 Flash Image no fal.ai. Antes de trocar, avaliei o risco de um modelo generativo alterar a peça: reforcei a instrução pra não mudar estampas e detalhes, testei com peças reais e mantive a Photoroom como primeira opção. Resultado: uma recarga de US$ 10 cobre ~250 fotos, em vez de US$ 100 por mês.
+- **Marca d'água × custo × fidelidade.** O plano da Photoroom que gera a vitrine custa US$ 100/mês, o que não faz sentido pra um app pessoal. Usei primeiro a cota grátis da chave de produção (10 fotos/mês), com volta automática pra sandbox quando ela acaba. Depois testei uma alternativa paga por foto: o Gemini 2.5 Flash Image (via fal.ai), um modelo generativo genérico, com instrução reforçada pra não alterar a peça. **No uso real ele falhou:** alongou um short curto e chegou a desenhar um corpo vestindo a peça. Como num armário a peça precisa ser a real, troquei a reserva por um **recorte fiel** (BiRefNet): sem efeito de manequim, mas idêntico à peça, ~10x mais barato e mais rápido (~4 s). Também criei o botão "Usar a foto real" pra quando a própria vitrine da Photoroom errar.
 - **Cadastro por foto lento.** A espera até poder salvar uma peça era de ~17 s no celular. Medi cada etapa e encontrei três problemas: (1) as etapas rodavam em fila; (2) as fotos eram salvas em PNG de 0,7 a 2,6 MB, mesmo tendo fundo branco; (3) a imagem fazia uma ida e volta extra pelo banco. Coloquei a IA dos campos pra rodar em paralelo, passei a salvar em JPEG de até 1200 px e fiz o servidor entregar a imagem direto pro celular. Resultado, medido no iPhone: campos em ~2 s e espera até salvar de ~10 s (a geração da vitrine varia de uma vez pra outra).
 - **Cores erradas.** Um acessório dourado era salvo como "Preto": o Preto vinha marcado por padrão, a cor era calculada pela média dos pixels (que vira um tom "lamacento" em peças com brilho), a paleta não tinha dourado e o Stylist recebia códigos de cor em vez de nomes. Troquei por uma paleta com nomes, cores sugeridas pela visão do Claude e nomes enviados ao Stylist.
 - **Bug que só aparecia no iPhone.** O seletor de cor do iOS avisa o app a cada movimento do dedo no espectro, e cada tom intermediário virava uma cor nova (dezenas de marrons). Passei a registrar a cor só quando o seletor fecha e limitei as cores personalizadas.
@@ -87,7 +87,7 @@ flowchart LR
 Para uso pessoal (uma usuária), o custo é muito baixo:
 
 - **Claude API:** ~US$ 0,12 no total desde o início do projeto (US$ 5 de crédito inicial, saldo de US$ 4,88 em 28/10/2026).
-- **fal.ai:** recarga única de US$ 10, que cobre ~250 fotos de vitrine (~US$ 0,04 cada). Os recortes custam uma fração de centavo e são feitos uma vez por foto.
+- **fal.ai:** recarga única de US$ 10. Os recortes custam uma fração de centavo por foto e cada foto é recortada uma vez só, então o crédito dura muito.
 - **Photoroom:** 10 fotos grátis por mês (chave de produção) + sandbox grátis como última reserva.
 - **Supabase e Vercel:** planos gratuitos.
 
@@ -95,7 +95,7 @@ Para uso pessoal (uma usuária), o custo é muito baixo:
 
 - **Sem login:** o app foi feito pra uma única usuária. As regras de acesso do banco estão abertas e precisam filtrar por usuário antes de o app ter outras pessoas usando.
 - Testado até agora só por mim.
-- Modelos generativos podem alterar pequenos detalhes da peça na foto de vitrine.
+- Fora da cota grátis da Photoroom, as fotos ficam recortadas, sem o efeito de manequim invisível.
 
 ## Próximos passos
 
@@ -113,7 +113,7 @@ npm install
 npm run dev
 ```
 
-Variáveis necessárias: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `PHOTOROOM_API_KEY` (chave sandbox da Photoroom) e `ANTHROPIC_API_KEY`. Opcionais: `PHOTOROOM_LIVE_API_KEY` (chave de produção, sem marca d'água; usada primeiro) e `FAL_KEY` (fal.ai: vitrine quando a cota da Photoroom acaba e recorte dos looks). Os scripts SQL do banco ficam na pasta `supabase/`: rode primeiro o `schema.sql` e o `storage.sql`, depois as migrações.
+Variáveis necessárias: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `PHOTOROOM_API_KEY` (chave sandbox da Photoroom) e `ANTHROPIC_API_KEY`. Opcionais: `PHOTOROOM_LIVE_API_KEY` (chave de produção, sem marca d'água; usada primeiro) e `FAL_KEY` (fal.ai: recorte fiel quando a cota da Photoroom acaba e recorte dos looks). Os scripts SQL do banco ficam na pasta `supabase/`: rode primeiro o `schema.sql` e o `storage.sql`, depois as migrações.
 
 ---
 
