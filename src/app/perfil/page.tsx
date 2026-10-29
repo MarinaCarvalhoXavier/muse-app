@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getOutfits, getPieces } from "@/lib/storage";
 import { Outfit, Piece } from "@/lib/types";
+import { FiltroTipos, TODAS, filtrarPorTipo } from "@/components/filtro-tipos";
 
 export default function PerfilPage() {
   const [pecas, setPecas] = useState<Piece[]>([]);
   const [looks, setLooks] = useState<Outfit[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [tipoFiltro, setTipoFiltro] = useState<string>(TODAS);
 
   useEffect(() => {
     Promise.all([getPieces(), getOutfits()]).then(([p, o]) => {
@@ -23,6 +25,7 @@ export default function PerfilPage() {
   const idsEmLooks = new Set(looks.flatMap((l) => l.itens.map((i) => i.pecaId)));
   const esquecidas = pecas.filter((p) => !idsEmLooks.has(p.id));
   const favoritas = pecas.filter((p) => p.favorita).length;
+  const esquecidasFiltradas = filtrarPorTipo(esquecidas, tipoFiltro);
 
   return (
     <main className="px-4 pb-24 pt-8">
@@ -53,8 +56,14 @@ export default function PerfilPage() {
                 : `${esquecidas.length} peças ainda não entraram em nenhum look.`}{" "}
               Que tal usar uma delas hoje?
             </p>
+            <FiltroTipos
+              pecas={esquecidas}
+              selecionado={tipoFiltro}
+              onSelecionar={setTipoFiltro}
+              className="mb-4"
+            />
             <div className="grid grid-cols-3 gap-3">
-              {esquecidas.map((p) => (
+              {esquecidasFiltradas.map((p) => (
                 <Link
                   key={p.id}
                   href={`/peca/${p.id}`}
