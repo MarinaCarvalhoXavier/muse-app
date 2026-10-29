@@ -8,6 +8,36 @@ import { FiltroTipos, TODAS, filtrarPorTipo } from "@/components/filtro-tipos";
 
 const LARGURA_PADRAO = 38; // % da largura do canvas
 
+// Objetos entram no look menores que as roupas, pra precisar ajustar menos.
+const LARGURA_POR_TIPO: Record<string, number> = {
+  Acessórios: 16,
+  Bolsas: 24,
+  Sapatos: 22,
+};
+function larguraInicial(tipo: string): number {
+  return LARGURA_POR_TIPO[tipo] ?? LARGURA_PADRAO;
+}
+
+const LARGURA_MIN = 6;
+const LARGURA_MAX = 95;
+
+type Ponto = { x: number; y: number };
+type Gesto = {
+  itemId: string;
+  ponteiros: Map<number, Ponto>;
+  modo: "mover" | "pinca";
+  // mover
+  inicio?: Ponto;
+  xOriginal?: number;
+  yOriginal?: number;
+  // pinça
+  distInicial?: number;
+  meioInicial?: Ponto;
+  larguraInicial?: number;
+  centroInicial?: Ponto; // em % do canvas
+  proporcao?: number; // altura/largura da peça na tela
+};
+
 
 export function OutfitCanvas({
   pieces,
@@ -69,12 +99,13 @@ export function OutfitCanvas({
       if (!dentro) return;
       const xPct = ((ev.clientX - rect.left) / rect.width) * 100;
       const yPct = ((ev.clientY - rect.top) / rect.height) * 100;
+      const largura = larguraInicial(peca.tipo);
       const novoItem: OutfitItem = {
         id: generateId(),
         pecaId: peca.id,
-        x: Math.min(Math.max(xPct - LARGURA_PADRAO / 2, 0), 100 - LARGURA_PADRAO),
-        y: Math.min(Math.max(yPct - LARGURA_PADRAO / 2, 0), 85),
-        largura: LARGURA_PADRAO,
+        x: Math.min(Math.max(xPct - largura / 2, 0), 100 - largura),
+        y: Math.min(Math.max(yPct - largura / 2, 0), 85),
+        largura,
       };
       onChange([...itens, novoItem]);
       setSelecionadoId(novoItem.id);
@@ -83,34 +114,138 @@ export function OutfitCanvas({
     window.addEventListener("pointerup", soltar);
   }
 
-  // Mover uma peça que já está no canvas.
+  // Gestos na peça, como no Canva: um dedo arrasta; dois dedos (pinça) aumentam
+  // ou diminuem a peça, e o segundo dedo pode cair fora dela.
+  const gestoRef = useRef<Gesto | null>(null);
+
+  function distancia(a: Ponto, b: Ponto) {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+  function meio(a: Ponto, b: Ponto): Ponto {
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  }
+
+  function comecarMover(gesto: Gesto, ponto: Ponto) {
+    const item = itensRef.current.find((i) => i.id === gesto.itemId);
+    if (!item) return;
+    gesto.modo = "mover";
+    gesto.inicio = ponto;
+    gesto.xOriginal = item.x;
+    gesto.yOriginal = item.y;
+  }
+
+  function comecarPinca(gesto: Gesto) {
+    const item = itensRef.current.find((i) => i.id === gesto.itemId);
+    const rect = getCanvasRect();
+    const [p1, p2] = Array.from(gesto.ponteiros.values());
+    if (!item || !rect || !p1 || !p2) return;
+    const el = canvasRef.current?.querySelector<HTMLElement>(`[data-item-id="${item.id}"]`);
+    const caixa = el?.getBoundingClientRect();
+    const proporcao = caixa && caixa.width > 0 ? caixa.height / caixa.width : 1;
+    const alturaPct = item.largura * proporcao * (rect.width / rect.height);
+    gesto.modo = "pinca";
+    gesto.distInicial = Math.max(distancia(p1, p2), 1);
+    gesto.meioInicial = meio(p1, p2);
+    gesto.larguraInicial = item.largura;
+    gesto.proporcao = proporcao;
+    gesto.centroInicial = { x: item.x + item.largura / 2, y: item.y + alturaPct / 2 };
+  }
+
+  function aoMoverPonteiro(ev: PointerEvent) {
+    const gesto = gestoRef.current;
+    if (!gesto || !gesto.ponteiros.has(ev.pointerId)) return;
+    gesto.ponteiros.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    const rect = getCanvasRect();
+    if (!rect) return;
+
+    if (gesto.modo === "mover" && gesto.inicio) {
+      const dxPct = ((ev.clientX - gesto.inicio.x) / rect.width) * 100;
+      const dyPct = ((ev.clientY - gesto.inicio.y) / rect.height) * 100;
+      onChangeItem(gesto.itemId, {
+        x: Math.min(Math.max((gesto.xOriginal ?? 0) + dxPct, -10), 95),
+        y: Math.min(Math.max((gesto.yOriginal ?? 0) + dyPct, -10), 95),
+      });
+      return;
+    }
+
+    if (gesto.modo === "pinca") {
+      const [p1, p2] = Array.from(gesto.ponteiros.values());
+      if (!p1 || !p2 || !gesto.distInicial || !gesto.meioInicial || !gesto.centroInicial) return;
+      const escala = distancia(p1, p2) / gesto.distInicial;
+      const largura = Math.min(Math.max((gesto.larguraInicial ?? LARGURA_PADRAO) * escala, LARGURA_MIN), LARGURA_MAX);
+      const alturaPct = largura * (gesto.proporcao ?? 1) * (rect.width / rect.height);
+      // O centro acompanha o meio entre os dois dedos (dá pra mover enquanto ajusta o tamanho).
+      const m = meio(p1, p2);
+      const cx = gesto.centroInicial.x + ((m.x - gesto.meioInicial.x) / rect.width) * 100;
+      const cy = gesto.centroInicial.y + ((m.y - gesto.meioInicial.y) / rect.height) * 100;
+      onChangeItem(gesto.itemId, { largura, x: cx - largura / 2, y: cy - alturaPct / 2 });
+    }
+  }
+
+  function aoSoltarPonteiro(ev: PointerEvent) {
+    const gesto = gestoRef.current;
+    if (!gesto) return;
+    gesto.ponteiros.delete(ev.pointerId);
+    if (gesto.ponteiros.size === 1) {
+      // Tirou um dedo da pinça: continua arrastando com o outro.
+      const [restante] = Array.from(gesto.ponteiros.values());
+      comecarMover(gesto, restante);
+    } else if (gesto.ponteiros.size === 0) {
+      gestoRef.current = null;
+      window.removeEventListener("pointermove", aoMoverPonteiro);
+      window.removeEventListener("pointerup", aoSoltarPonteiro);
+      window.removeEventListener("pointercancel", aoSoltarPonteiro);
+    }
+  }
+
+  // Um dedo encostou numa peça.
   function iniciarMovimento(e: React.PointerEvent, item: OutfitItem) {
     e.preventDefault();
     e.stopPropagation();
+    const ponto = { x: e.clientX, y: e.clientY };
+    const gesto = gestoRef.current;
+    if (gesto) {
+      // Segundo dedo (mesmo em outra peça): vira pinça na peça do primeiro dedo.
+      if (gesto.ponteiros.size === 1) {
+        gesto.ponteiros.set(e.pointerId, ponto);
+        comecarPinca(gesto);
+      }
+      return;
+    }
     setSelecionadoId(item.id);
-    const rect = getCanvasRect();
-    if (!rect) return;
-    const rectAtual = rect;
-    const inicioX = e.clientX;
-    const inicioY = e.clientY;
-    const xOriginal = item.x;
-    const yOriginal = item.y;
-
-    function mover(ev: PointerEvent) {
-      const dxPct = ((ev.clientX - inicioX) / rectAtual.width) * 100;
-      const dyPct = ((ev.clientY - inicioY) / rectAtual.height) * 100;
-      onChangeItem(item.id, {
-        x: Math.min(Math.max(xOriginal + dxPct, -10), 95),
-        y: Math.min(Math.max(yOriginal + dyPct, -10), 95),
-      });
-    }
-    function soltar() {
-      window.removeEventListener("pointermove", mover);
-      window.removeEventListener("pointerup", soltar);
-    }
-    window.addEventListener("pointermove", mover);
-    window.addEventListener("pointerup", soltar);
+    const novo: Gesto = { itemId: item.id, ponteiros: new Map([[e.pointerId, ponto]]), modo: "mover" };
+    gestoRef.current = novo;
+    comecarMover(novo, ponto);
+    window.addEventListener("pointermove", aoMoverPonteiro);
+    window.addEventListener("pointerup", aoSoltarPonteiro);
+    window.addEventListener("pointercancel", aoSoltarPonteiro);
   }
+
+  // Um dedo encostou no fundo do canvas: se já tem um dedo numa peça, é o segundo
+  // dedo da pinça; senão, só tira a seleção.
+  function aoTocarFundo(e: React.PointerEvent) {
+    const gesto = gestoRef.current;
+    if (gesto && gesto.ponteiros.size === 1) {
+      e.preventDefault();
+      gesto.ponteiros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      comecarPinca(gesto);
+      return;
+    }
+    setSelecionadoId(null);
+  }
+
+  // Impede o zoom da página do Safari quando a pinça é feita dentro do canvas.
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const bloquear = (ev: Event) => ev.preventDefault();
+    el.addEventListener("gesturestart", bloquear);
+    el.addEventListener("gesturechange", bloquear);
+    return () => {
+      el.removeEventListener("gesturestart", bloquear);
+      el.removeEventListener("gesturechange", bloquear);
+    };
+  }, []);
 
   // Redimensionar a peça selecionada, puxando a alcinha no canto.
   function iniciarRedimensionamento(e: React.PointerEvent, item: OutfitItem) {
@@ -124,7 +259,7 @@ export function OutfitCanvas({
 
     function mover(ev: PointerEvent) {
       const dxPct = ((ev.clientX - inicioX) / rectAtual.width) * 100;
-      const novaLargura = Math.min(Math.max(larguraOriginal + dxPct, 12), 90);
+      const novaLargura = Math.min(Math.max(larguraOriginal + dxPct, LARGURA_MIN), LARGURA_MAX);
       onChangeItem(item.id, { largura: novaLargura });
     }
     function soltar() {
@@ -212,8 +347,8 @@ export function OutfitCanvas({
     <div>
       <div
         ref={canvasRef}
-        onPointerDown={() => setSelecionadoId(null)}
-        className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl border border-black/10 bg-white"
+        onPointerDown={aoTocarFundo}
+        className="relative aspect-[3/4] w-full touch-none select-none overflow-hidden rounded-2xl border border-black/10 bg-white"
       >
         {itens.map((item) => {
           const peca = pieces.find((p) => p.id === item.pecaId);
@@ -223,6 +358,7 @@ export function OutfitCanvas({
           return (
             <div
               key={item.id}
+              data-item-id={item.id}
               onPointerDown={(e) => iniciarMovimento(e, item)}
               className="absolute touch-none"
               style={{ left: `${item.x}%`, top: `${item.y}%`, width: `${item.largura}%` }}
@@ -305,6 +441,11 @@ export function OutfitCanvas({
         </div>
       )}
       {erroRemoverFundo && <p className="mt-2 text-center text-xs text-red-600">{erroRemoverFundo}</p>}
+      {itens.length > 0 && (
+        <p className="mt-2 text-center text-[11px] text-black/40">
+          Dica: use dois dedos (pinça) pra aumentar ou diminuir a peça.
+        </p>
+      )}
 
       <p className="mb-2 mt-6 text-xs text-black/50">Arraste uma peça para o canvas</p>
       <FiltroTipos
