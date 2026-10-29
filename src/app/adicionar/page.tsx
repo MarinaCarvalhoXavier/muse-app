@@ -97,6 +97,14 @@ function AdicionarPecaConteudo() {
 
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
+  // "A IA mudou a peça? Usar a foto real": guarda a foto original desta sessão e a
+  // vitrine gerada, pra alternar entre a vitrine da IA e a foto real só sem fundo.
+  const jpegOriginalRef = useRef<Blob | null>(null);
+  const [temOriginalSessao, setTemOriginalSessao] = useState(false);
+  const [urlOriginalSalva, setUrlOriginalSalva] = useState<string | null>(null);
+  const [fotoVitrineUrl, setFotoVitrineUrl] = useState<string | null>(null);
+  const [fotoRealUrl, setFotoRealUrl] = useState<string | null>(null);
+  const [gerandoFotoReal, setGerandoFotoReal] = useState(false);
   const [processandoFoto, setProcessandoFoto] = useState(false);
   const [erroFoto, setErroFoto] = useState<string | null>(null);
   const [sugerindoTags, setSugerindoTags] = useState(false);
@@ -484,6 +492,76 @@ function AdicionarPecaConteudo() {
     }
   }
 
+  // Endereço da foto original guardada (só existe pra peças cadastradas depois
+  // que o app passou a guardar originais).
+  function urlDaOriginal(url: string): string {
+    return url.replace("/fotos-pecas/", "/fotos-pecas/originais/").replace(/\.png(\?.*)?$/, ".jpg");
+  }
+
+  // Na edição de uma peça, descobre se a foto original dela está guardada.
+  useEffect(() => {
+    if (!editandoId || !fotoUrl || jpegOriginalRef.current || fotoVitrineUrl) return;
+    const original = urlDaOriginal(fotoUrl);
+    fetch(original, { method: "HEAD" })
+      .then((r) => {
+        if (r.ok) {
+          setUrlOriginalSalva(original);
+          setFotoVitrineUrl(fotoUrl);
+        }
+      })
+      .catch(() => {});
+  }, [editandoId, fotoUrl, fotoVitrineUrl]);
+
+  const temFotoOriginal = temOriginalSessao || !!urlOriginalSalva;
+
+  // Refaz a imagem sem IA generativa: só tira o fundo da foto real e põe no
+  // fundo branco. 100% fiel à peça (sem o efeito de manequim).
+  async function usarFotoReal() {
+    if (fotoRealUrl) {
+      setFotoUrl(fotoRealUrl);
+      return;
+    }
+    setGerandoFotoReal(true);
+    setErroFoto(null);
+    try {
+      let original = urlOriginalSalva;
+      if (!original && jpegOriginalRef.current) {
+        const nome = `originais/${generateId()}.jpg`;
+        const { error } = await supabase.storage
+          .from("fotos-pecas")
+          .upload(nome, jpegOriginalRef.current, { contentType: "image/jpeg" });
+        if (error) throw new Error(error.message);
+        original = supabase.storage.from("fotos-pecas").getPublicUrl(nome).data.publicUrl;
+        setUrlOriginalSalva(original);
+      }
+      if (!original) throw new Error("Foto original não encontrada.");
+
+      const res = await fetch("/api/remover-fundo-item", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fotoUrl: original }),
+      });
+      const dados = await res.json().catch(() => null);
+      if (!res.ok || !dados?.url) throw new Error(dados?.error || "Não consegui tirar o fundo agora.");
+
+      const enquadrada = await normalizarEnquadramento(dados.url as string);
+      if (!enquadrada) throw new Error("Não consegui ajustar a foto.");
+      const nomeFinal = `${generateId()}.jpg`;
+      const { error: erroUpload } = await supabase.storage
+        .from("fotos-pecas")
+        .upload(nomeFinal, enquadrada, { contentType: "image/jpeg" });
+      if (erroUpload) throw new Error(erroUpload.message);
+      const url = supabase.storage.from("fotos-pecas").getPublicUrl(nomeFinal).data.publicUrl;
+      setFotoRealUrl(url);
+      setFotoUrl(url);
+    } catch (err) {
+      console.error("Erro ao usar a foto real:", err);
+      setErroFoto(err instanceof Error ? err.message : "Não consegui usar a foto real agora.");
+    } finally {
+      setGerandoFotoReal(false);
+    }
+  }
+
   async function handleFotoSelecionada(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -497,6 +575,11 @@ function AdicionarPecaConteudo() {
       // Fotos de celular (ex: HEIC do iPhone) não são aceitas pela Photoroom,
       // então convertemos tudo pra JPEG antes de enviar.
       const jpeg = await converterParaJpeg(file);
+      jpegOriginalRef.current = jpeg;
+      setTemOriginalSessao(true);
+      setFotoVitrineUrl(null);
+      setFotoRealUrl(null);
+      setUrlOriginalSalva(null);
 
       // A IA dos campos roda AO MESMO TEMPO que a Photoroom, usando a foto
       // original (menor, pra ir rápido). Antes ela só começava depois da
@@ -539,6 +622,7 @@ function AdicionarPecaConteudo() {
             .from("fotos-pecas")
             .getPublicUrl(nomeArquivo);
           setFotoUrl(publicUrlData.publicUrl);
+          setFotoVitrineUrl(publicUrlData.publicUrl);
           // A cor é lida da imagem que já está na memória do celular, sem baixar de novo.
           const corDetectada = await extrairCorPredominante(URL.createObjectURL(fotoFinal));
           if (corDetectada) {
@@ -685,6 +769,29 @@ function AdicionarPecaConteudo() {
             </label>
           )}
           {erroFoto && <p className="mt-2 text-sm text-red-600">{erroFoto}</p>}
+          {fotoUrl && temFotoOriginal && !processandoFoto && (
+            <div className="mt-2 flex items-center justify-center gap-2 text-xs">
+              {fotoUrl === fotoRealUrl ? (
+                <>
+                  <span className="text-black/50">Usando a foto real (só sem fundo)</span>
+                  {fotoVitrineUrl && (
+                    <button type="button" onClick={() => setFotoUrl(fotoVitrineUrl)} className="font-medium underline">
+                      Voltar pra vitrine
+                    </button>
+                  )}
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={usarFotoReal}
+                  disabled={gerandoFotoReal}
+                  className="rounded-full border border-black/15 px-3 py-1.5 font-medium text-black/70 disabled:opacity-60"
+                >
+                  {gerandoFotoReal ? "Tirando o fundo da foto real…" : "A IA mudou a peça? Usar a foto real"}
+                </button>
+              )}
+            </div>
+          )}
           {sugerindoTags && (
             <p className="mt-2 flex items-center gap-1.5 text-sm text-black/60">
               <i className="fi-rr-sparkles text-xs" aria-hidden="true" />

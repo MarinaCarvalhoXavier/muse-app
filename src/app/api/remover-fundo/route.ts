@@ -11,7 +11,10 @@ const PROMPT =
   "3D structure so it looks worn while keeping the wearer invisible. Remove wrinkles if any. " +
   "Exception: if the item is jewelry, a bag, shoes, a belt, glasses or another accessory, keep its " +
   "real shape and materials exactly as they are, do not turn it into clothing, and just present it " +
-  "clean, centered and sharp on a plain white background.";
+  "clean, centered and sharp on a plain white background. " +
+  "Preserve the exact length, proportions, silhouette, cut and hemline of the original item: " +
+  "never make it longer, shorter, wider or looser, and never change what kind of item it is " +
+  "(short shorts stay short shorts, a cropped top stays cropped, a mini skirt stays mini).";
 
 // Instrução pro fal.ai (Gemini 2.5 Flash Image, "nano-banana"): mesma ideia da vitrine,
 // com ênfase em NÃO mudar a peça, porque modelos que redesenham a imagem podem
@@ -23,7 +26,9 @@ const PROMPT_FAL =
   "never flat. If it is jewelry, a bag, shoes, a belt, glasses or another accessory, keep its " +
   "real shape and just present it cleanly. Keep the exact same item: do not change its colors, " +
   "prints, patterns, logos, text, buttons, materials or any detail. Remove people, hangers, " +
-  "hands and the original background.";
+  "hands and the original background. Preserve the exact length, proportions, silhouette, cut " +
+  "and hemline: never make the item longer, shorter, wider or looser than in the photo (short " +
+  "shorts must stay short shorts, a cropped top stays cropped, a mini skirt stays mini).";
 
 // Ordem de tentativa pra gerar a vitrine:
 // 1. Photoroom com chave de produção (sem marca d'água, cota grátis limitada);
