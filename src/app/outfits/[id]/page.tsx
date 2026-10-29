@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Outfit, OutfitItem, Piece } from "@/lib/types";
 import { deleteOutfit, getOutfitById, getPieces, updateOutfit } from "@/lib/storage";
-import { OutfitCanvas } from "@/components/outfit-canvas";
+import { LookEditor } from "@/components/look-editor";
 
 export default function OutfitDetalhePage() {
   const params = useParams<{ id: string }>();
@@ -13,10 +13,6 @@ export default function OutfitDetalhePage() {
   const [outfit, setOutfit] = useState<Outfit | null>(null);
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [carregando, setCarregando] = useState(true);
-  const [nome, setNome] = useState("");
-  const [itens, setItens] = useState<OutfitItem[]>([]);
-  const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
     let ativo = true;
@@ -24,10 +20,6 @@ export default function OutfitDetalhePage() {
       if (!ativo) return;
       setOutfit(o);
       setPieces(p);
-      if (o) {
-        setNome(o.nome);
-        setItens(o.itens);
-      }
       setCarregando(false);
     });
     return () => {
@@ -35,30 +27,20 @@ export default function OutfitDetalhePage() {
     };
   }, [params.id]);
 
-  async function handleSalvar() {
-    setSalvando(true);
-    setErro(null);
-    const { error } = await updateOutfit(params.id, { nome: nome.trim() || "Look sem nome", itens });
-    setSalvando(false);
-    if (error) {
-      setErro(error);
-      return;
-    }
+  async function salvar(nome: string, itens: OutfitItem[]): Promise<string | null> {
+    const { error } = await updateOutfit(params.id, { nome, itens });
+    if (error) return error;
     router.push("/outfits");
+    return null;
   }
 
-  async function handleExcluir() {
-    if (!confirm("Excluir este look?")) return;
+  async function excluir() {
     await deleteOutfit(params.id);
     router.push("/outfits");
   }
 
   if (carregando) {
-    return (
-      <main className="px-4 pb-24 pt-8">
-        <p className="text-sm text-black/40">Carregando…</p>
-      </main>
-    );
+    return <p className="px-4 pt-8 text-sm text-black/40">Carregando…</p>;
   }
 
   if (!outfit) {
@@ -73,49 +55,14 @@ export default function OutfitDetalhePage() {
   }
 
   return (
-    <main className="px-4 pb-28 pt-8">
-      <header className="mb-5 flex items-center gap-3">
-        <Link
-          href="/outfits"
-          aria-label="Voltar"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-black/50"
-        >
-          <i className="fi-rr-arrow-left" aria-hidden="true" />
-        </Link>
-        <div>
-          <p className="text-xs uppercase tracking-wide text-black/40">Muse</p>
-          <h1 className="font-[var(--font-display)] text-2xl">Editar look</h1>
-        </div>
-      </header>
-
-      <input
-        value={nome}
-        onChange={(e) => setNome(e.target.value)}
-        placeholder="Nome do look"
-        className="mb-4 w-full rounded-xl border border-black/10 px-3 py-2 text-sm"
-      />
-
-      <OutfitCanvas pieces={pieces} itens={itens} onChange={setItens} />
-
-      {erro && <p className="mt-3 text-sm text-red-600">{erro}</p>}
-
-      <div className="mt-6 flex gap-3">
-        <button
-          type="button"
-          onClick={handleExcluir}
-          className="rounded-full border border-red-200 px-4 py-2.5 text-sm font-medium text-red-500"
-        >
-          Excluir
-        </button>
-        <button
-          type="button"
-          onClick={handleSalvar}
-          disabled={salvando}
-          className="flex-1 rounded-full bg-[var(--color-lime)] py-2.5 text-sm font-medium text-[var(--color-ink)] disabled:opacity-60"
-        >
-          {salvando ? "Salvando..." : "Salvar alterações"}
-        </button>
-      </div>
-    </main>
+    <LookEditor
+      titulo="Editar look"
+      pieces={pieces}
+      itensIniciais={outfit.itens}
+      nomeInicial={outfit.nome}
+      onSalvar={salvar}
+      onFechar={() => router.push("/outfits")}
+      onExcluir={excluir}
+    />
   );
 }

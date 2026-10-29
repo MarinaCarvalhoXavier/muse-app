@@ -28,26 +28,20 @@ export default function OutfitsPage() {
   }
 
   return (
-    <main className="px-4 pb-24 pt-8">
+    <main className="px-4 pb-40 pt-8">
       <header className="mb-6 flex items-start justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-black/40">Muse</p>
           <h1 className="font-[var(--font-display)] text-2xl">Looks</h1>
           <p className="text-sm text-black/50">
-            {carregando ? "Carregando…" : `${outfits.length} looks salvos`}
+            {carregando ? "Carregando…" : outfits.length === 1 ? "1 look salvo" : `${outfits.length} looks salvos`}
           </p>
         </div>
-        <Link
-          href="/outfits/novo"
-          className="shrink-0 rounded-full bg-[var(--color-lime)] px-3 py-1.5 text-sm font-medium text-[var(--color-ink)]"
-        >
-          Novo look
-        </Link>
       </header>
 
       {!carregando && outfits.length === 0 && (
         <p className="mt-16 text-center text-sm text-black/40">
-          Nenhum look salvo ainda. Toque em &quot;Novo look&quot; pra criar o primeiro.
+          Nenhum look salvo ainda. Toque em &quot;Criar look&quot; aqui embaixo pra montar o primeiro.
         </p>
       )}
 
@@ -80,6 +74,16 @@ export default function OutfitsPage() {
             <p className="truncate px-3 py-2 text-sm font-medium">{o.nome}</p>
           </Link>
         ))}
+      </div>
+
+      {/* Botão fixo, sempre à mão, acima da barra de navegação */}
+      <div className="pointer-events-none fixed bottom-[104px] left-0 right-0 z-30 mx-auto flex max-w-md justify-center px-4">
+        <Link
+          href="/outfits/novo"
+          className="pointer-events-auto flex items-center gap-2 rounded-full bg-[var(--color-ink)] px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-black/25 transition-transform active:scale-95"
+        >
+          <i className="fi-rr-plus text-sm" aria-hidden="true" /> Criar look
+        </Link>
       </div>
     </main>
   );

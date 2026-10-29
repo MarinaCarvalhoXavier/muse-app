@@ -14,6 +14,9 @@ const tabs = [
 export function BottomNav() {
   const pathname = usePathname();
 
+  // No editor de looks (tela cheia) a barra de navegação some.
+  if (/^\/outfits\/.+/.test(pathname)) return null;
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-black/5 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-md items-center justify-between px-4 py-2">

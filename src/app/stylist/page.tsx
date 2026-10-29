@@ -1,6 +1,6 @@
 "use client";
 
-import { nomeDaCor } from "@/lib/cores";
+import { pecaResumo } from "@/lib/peca-resumo";
 import { useEffect, useState } from "react";
 import { Ocasiao, Outfit, OutfitItem, Peso, Piece } from "@/lib/types";
 import { generateId } from "@/lib/id";
@@ -16,20 +16,6 @@ type Sugestao = {
   observacao: string;
 };
 
-function pecaResumo(p: Piece) {
-  return {
-    id: p.id,
-    tipo: p.tipo,
-    subtipos: p.subtipos ?? [],
-    ocasioes: p.ocasioes,
-    // Nome da cor ("Azul-claro") em vez do código, pra IA não errar a cor da peça.
-    cores: (p.cores ?? []).map(nomeDaCor),
-    peso: p.peso,
-    marca: p.marca,
-    estampa: p.estampa,
-    favorita: p.favorita,
-  };
-}
 
 // Distribui as peças de um look num grid simples de até 2 colunas dentro do
 // canvas do outfit — só um ponto de partida; a pessoa pode reorganizar depois
