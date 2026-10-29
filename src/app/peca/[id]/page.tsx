@@ -57,12 +57,20 @@ export default function DetalhePecaPage() {
         </button>
 
         {piece && (
-          <button
-            onClick={() => setConfirmandoExclusao(true)}
-            className="flex items-center gap-1 text-sm text-red-600"
-          >
-            <i className="fi-rr-trash" aria-hidden="true" /> Excluir
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push(`/adicionar?editar=${piece.id}`)}
+              className="flex items-center gap-1 text-sm text-black/70"
+            >
+              <i className="fi-rr-pencil" aria-hidden="true" /> Editar
+            </button>
+            <button
+              onClick={() => setConfirmandoExclusao(true)}
+              className="flex items-center gap-1 text-sm text-red-600"
+            >
+              <i className="fi-rr-trash" aria-hidden="true" /> Excluir
+            </button>
+          </div>
         )}
       </div>
 

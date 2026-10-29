@@ -103,6 +103,30 @@ export async function addPiece(piece: Piece): Promise<{ error?: string }> {
   return {};
 }
 
+export async function updatePiece(piece: Piece): Promise<{ error?: string }> {
+  const { error } = await supabase
+    .from("pieces")
+    .update({
+      tipo: piece.tipo,
+      subtipos: piece.subtipos ?? [],
+      ocasioes: piece.ocasioes,
+      cores: piece.cores ?? [],
+      peso: piece.peso ?? null,
+      favorita: piece.favorita,
+      marca: piece.marca ?? null,
+      notas: piece.notas ?? null,
+      estampa: piece.estampa ?? null,
+      foto_url: piece.fotoUrl ?? null,
+    })
+    .eq("id", piece.id);
+
+  if (error) {
+    console.error("Erro ao atualizar peça:", error.message);
+    return { error: error.message };
+  }
+  return {};
+}
+
 export async function updateFavorita(id: string, favorita: boolean): Promise<{ error?: string }> {
   const { error } = await supabase.from("pieces").update({ favorita }).eq("id", id);
   if (error) {

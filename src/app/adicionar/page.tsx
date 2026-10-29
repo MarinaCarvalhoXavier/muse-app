@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Ocasiao, Peso, Piece, Tipo } from "@/lib/types";
 import { generateId } from "@/lib/id";
 import { supabase } from "@/lib/supabase";
@@ -11,6 +11,8 @@ import {
   addCustomSubtipo,
   addCustomTipo,
   addPiece,
+  getPieceById,
+  updatePiece,
   getCustomCores,
   getCustomOcasioes,
   getCustomSubtipos,
@@ -60,7 +62,17 @@ const CORES_PADRAO = [
 ];
 
 export default function AdicionarPecaPage() {
+  // useSearchParams precisa de um Suspense em volta no Next.js.
+  return (
+    <Suspense fallback={null}>
+      <AdicionarPecaConteudo />
+    </Suspense>
+  );
+}
+
+function AdicionarPecaConteudo() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [tipos, setTipos] = useState<Tipo[]>(() => [...TIPOS_PADRAO, ...getCustomTipos()]);
   const [ocasioesOpcoes, setOcasioesOpcoes] = useState<Ocasiao[]>(() => [
     ...OCASIOES_PADRAO,
@@ -68,7 +80,15 @@ export default function AdicionarPecaPage() {
   ]);
   const [paletaCores, setPaletaCores] = useState<string[]>(() => [...CORES_PADRAO, ...getCustomCores()]);
 
-  const [tipo, setTipo] = useState<Tipo>(TIPOS_PADRAO[0]);
+  // Começa sem tipo marcado: se a IA falhar, a pessoa percebe e escolhe,
+  // em vez de a peça ser salva como "Parte de cima" sem ninguém notar.
+  const [tipo, setTipo] = useState<Tipo>("");
+
+  // Modo edição: /adicionar?editar=<id> reaproveita esta mesma tela.
+  const editandoId = searchParams.get("editar");
+  const [criadaEmOriginal, setCriadaEmOriginal] = useState<string | null>(null);
+  const [pecaCarregada, setPecaCarregada] = useState(false);
+  const carregandoPeca = !!editandoId && !pecaCarregada;
   const [subtipos, setSubtipos] = useState<string[]>([]);
   const [customSubtipos, setCustomSubtipos] = useState<Record<string, string[]>>(() => {
     const mapa: Record<string, string[]> = {};
@@ -492,12 +512,55 @@ export default function AdicionarPecaPage() {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!editandoId) return;
+    getPieceById(editandoId).then((p) => {
+      setPecaCarregada(true);
+      if (!p) {
+        setErro("Não encontrei essa peça.");
+        return;
+      }
+      // Garante que as opções da peça aparecem como chips, mesmo que tenham
+      // sido criadas em outro aparelho.
+      setTipos((prev) => (prev.includes(p.tipo) ? prev : [...prev, p.tipo]));
+      setTipo(p.tipo);
+      const subs = p.subtipos ?? [];
+      setCustomSubtipos((prev) => {
+        const conhecidos = [...(SUBTIPOS_PADRAO[p.tipo] ?? []), ...(prev[p.tipo] ?? [])];
+        const faltando = subs.filter((x) => !conhecidos.includes(x));
+        return faltando.length ? { ...prev, [p.tipo]: [...(prev[p.tipo] ?? []), ...faltando] } : prev;
+      });
+      setSubtipos(subs);
+      setOcasioesOpcoes((prev) => [...prev, ...p.ocasioes.filter((o) => !prev.includes(o))]);
+      setOcasioes(p.ocasioes);
+      setPaletaCores((prev) => [...prev, ...p.cores.filter((c) => !prev.includes(c))]);
+      setCoresSelecionadas(p.cores);
+      setPeso(p.peso ?? null);
+      setFavorita(p.favorita);
+      setMarca(p.marca ?? "");
+      setNotas(p.notas ?? "");
+      setEstampa(p.estampa ?? "");
+      if (p.marca || p.notas || p.estampa) setDetalhesAbertos(true);
+      if (p.fotoUrl) {
+        setFotoUrl(p.fotoUrl);
+        setFotoPreview(p.fotoUrl);
+      }
+      setCriadaEmOriginal(p.criadaEm);
+    });
+  }, [editandoId]);
+
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSalvando(true);
     setErro(null);
+    if (!tipo) {
+      setErro("Escolha o tipo da peça.");
+      setSalvando(false);
+      return;
+    }
     const piece: Piece = {
-      id: generateId(),
+      id: editandoId ?? generateId(),
       tipo,
       subtipos: subtipos.length > 0 ? subtipos : undefined,
       ocasioes,
@@ -508,26 +571,34 @@ export default function AdicionarPecaPage() {
       notas: notas || undefined,
       estampa: estampa || undefined,
       fotoUrl: fotoUrl || undefined,
-      criadaEm: new Date().toISOString(),
+      criadaEm: criadaEmOriginal ?? new Date().toISOString(),
     };
-    const { error } = await addPiece(piece);
+    const { error } = editandoId ? await updatePiece(piece) : await addPiece(piece);
     if (error) {
       setErro(error);
       setSalvando(false);
       return;
     }
-    router.push("/");
+    router.push(editandoId ? `/peca/${editandoId}` : "/");
   }
 
   return (
     <main className="px-4 pb-24 pt-8">
       <header className="mb-6">
-        <p className="text-xs uppercase tracking-wide text-black/40">Nova peça</p>
-        <h1 className="font-[var(--font-display)] text-2xl">Adicionar peça</h1>
-        <p className="mt-1 text-sm text-black/50">
-          Tire uma foto da peça — a gente remove o fundo e dá um efeito de vitrine
-          automaticamente.
+        <p className="text-xs uppercase tracking-wide text-black/40">
+          {editandoId ? "Sua peça" : "Nova peça"}
         </p>
+        <h1 className="font-[var(--font-display)] text-2xl">
+          {editandoId ? "Editar peça" : "Adicionar peça"}
+        </h1>
+        {editandoId ? (
+          carregandoPeca && <p className="mt-1 text-sm text-black/50">Carregando…</p>
+        ) : (
+          <p className="mt-1 text-sm text-black/50">
+            Tire uma foto da peça — a gente remove o fundo e dá um efeito de vitrine
+            automaticamente.
+          </p>
+        )}
       </header>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -695,10 +766,18 @@ export default function AdicionarPecaPage() {
 
         <button
           type="submit"
-          disabled={salvando || processandoFoto}
+          disabled={salvando || processandoFoto || carregandoPeca || !tipo}
           className="w-full rounded-full bg-[var(--color-lime)] py-3 font-medium text-[var(--color-ink)] disabled:opacity-60"
         >
-          {salvando ? "Salvando..." : processandoFoto ? "Finalizando a foto…" : "Salvar no armário"}
+          {salvando
+            ? "Salvando..."
+            : processandoFoto
+              ? "Finalizando a foto…"
+              : !tipo
+                ? "Escolha o tipo da peça"
+                : editandoId
+                  ? "Salvar alterações"
+                  : "Salvar no armário"}
         </button>
       </form>
     </main>
