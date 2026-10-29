@@ -8,13 +8,25 @@ const PROMPT =
   "Only the product should appear, floating. Use the most flattering perspective and " +
   "make the item look new with very sharp and clean resolution. Show only the main " +
   "subject on a plain white background. If the original product is flat, add natural " +
-  "3D structure so it looks worn while keeping the wearer invisible. Remove wrinkles if any.";
+  "3D structure so it looks worn while keeping the wearer invisible. Remove wrinkles if any. " +
+  "Exception: if the item is jewelry, a bag, shoes, a belt, glasses or another accessory, keep its " +
+  "real shape and materials exactly as they are, do not turn it into clothing, and just present it " +
+  "clean, centered and sharp on a plain white background.";
+
+// Duas chaves da Photoroom:
+// - PHOTOROOM_LIVE_API_KEY (produção): fotos sem marca d'água, mas com cota limitada
+//   (no plano grátis, 10 imagens por mês).
+// - PHOTOROOM_API_KEY (sandbox): ilimitada pra testes, mas com marca d'água.
+// O app tenta a de produção primeiro e, se a Photoroom recusar (cota acabou, chave
+// inválida etc.), volta sozinho pra sandbox. Assim o cadastro nunca quebra.
+const STATUS_TROCA_PRA_SANDBOX = [401, 402, 403, 429];
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.PHOTOROOM_API_KEY;
-  if (!apiKey) {
+  const chaveProducao = process.env.PHOTOROOM_LIVE_API_KEY;
+  const chaveSandbox = process.env.PHOTOROOM_API_KEY;
+  if (!chaveProducao && !chaveSandbox) {
     return NextResponse.json(
-      { error: "PHOTOROOM_API_KEY não configurada no servidor (.env.local)." },
+      { error: "Nenhuma chave da Photoroom configurada no servidor." },
       { status: 500 }
     );
   }
@@ -27,7 +39,7 @@ export async function POST(req: NextRequest) {
 
   // Pede a vitrine em JPEG (fundo branco não precisa de PNG): a imagem volta
   // bem mais leve. Se a Photoroom recusar o parâmetro, tenta de novo em PNG.
-  async function chamarPhotoroom(comJpeg: boolean) {
+  async function chamarPhotoroom(chave: string, comJpeg: boolean) {
     const form = new FormData();
     form.append("imageFile", file as Blob, "peca.jpg");
     form.append("editWithAI.mode", "ai.auto");
@@ -35,18 +47,33 @@ export async function POST(req: NextRequest) {
     if (comJpeg) form.append("export.format", "jpeg");
     return fetch("https://image-api.photoroom.com/v2/edit", {
       method: "POST",
-      headers: { "x-api-key": apiKey as string },
+      headers: { "x-api-key": chave },
       body: form,
     });
   }
 
-  let photoroomRes: Response;
-  try {
-    photoroomRes = await chamarPhotoroom(true);
-    if (photoroomRes.status === 400) {
-      const texto = await photoroomRes.text().catch(() => "");
+  async function tentarComChave(chave: string) {
+    let res = await chamarPhotoroom(chave, true);
+    if (res.status === 400) {
+      const texto = await res.text().catch(() => "");
       console.warn("Photoroom recusou export.format=jpeg, tentando em PNG:", texto);
-      photoroomRes = await chamarPhotoroom(false);
+      res = await chamarPhotoroom(chave, false);
+    }
+    return res;
+  }
+
+  let photoroomRes: Response;
+  let modo: "producao" | "sandbox" = chaveProducao ? "producao" : "sandbox";
+  try {
+    photoroomRes = await tentarComChave((chaveProducao ?? chaveSandbox) as string);
+    if (modo === "producao" && chaveSandbox && STATUS_TROCA_PRA_SANDBOX.includes(photoroomRes.status)) {
+      const texto = await photoroomRes.text().catch(() => "");
+      console.warn(
+        `Chave de produção recusada (${photoroomRes.status}), usando sandbox com marca d'água:`,
+        texto
+      );
+      modo = "sandbox";
+      photoroomRes = await tentarComChave(chaveSandbox);
     }
   } catch (err) {
     console.error("Erro de rede ao chamar Photoroom:", err);
@@ -62,15 +89,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Devolve a imagem direto pro celular. Antes o servidor subia a imagem pro
-  // Supabase e o celular tinha que baixar de lá de novo (uma ida e volta a mais).
-  // Agora o celular ajusta o enquadramento e faz um único upload.
+  console.log(`Vitrine gerada com a chave de ${modo === "producao" ? "PRODUÇÃO (sem marca d'água)" : "SANDBOX (com marca d'água)"}`);
+
+  // Devolve a imagem direto pro celular, que ajusta a margem e faz um único upload.
   const imagem = await photoroomRes.arrayBuffer();
   return new NextResponse(imagem, {
     status: 200,
     headers: {
       "Content-Type": photoroomRes.headers.get("content-type") || "image/png",
       "Cache-Control": "no-store",
+      "X-Photoroom-Modo": modo,
     },
   });
 }

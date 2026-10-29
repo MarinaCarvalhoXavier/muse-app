@@ -99,11 +99,11 @@ Para uso pessoal (uma usuária), o custo é praticamente zero:
 
 ```bash
 npm install
-cp .env.local.example .env.local   # preencha com as suas chaves
+# crie um arquivo .env.local com as variáveis abaixo
 npm run dev
 ```
 
-Variáveis necessárias: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `PHOTOROOM_API_KEY` e `ANTHROPIC_API_KEY`. Os scripts SQL do banco ficam na pasta `supabase/`. Rode primeiro o `schema.sql` e o `storage.sql`, depois as migrações.
+Variáveis necessárias: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `PHOTOROOM_API_KEY` (chave sandbox da Photoroom) e `ANTHROPIC_API_KEY`. Opcional: `PHOTOROOM_LIVE_API_KEY` (chave de produção, sem marca d'água; o app usa essa primeiro e volta pra sandbox sozinho quando a cota acaba). Os scripts SQL do banco ficam na pasta `supabase/`. Rode primeiro o `schema.sql` e o `storage.sql`, depois as migrações.
 
 ---
 

@@ -467,6 +467,14 @@ function AdicionarPecaConteudo() {
         if (uploadError) {
           setErroFoto(`Não consegui salvar a foto: ${uploadError.message}`);
         } else {
+          // Guarda também a foto original (antes da vitrine), com o mesmo nome dentro
+          // de "originais/". Assim dá pra refazer a vitrine no futuro sem fotografar de novo.
+          supabase.storage
+            .from("fotos-pecas")
+            .upload(`originais/${nomeArquivo.replace(/\.png$/, ".jpg")}`, jpeg, { contentType: "image/jpeg" })
+            .then(({ error }) => {
+              if (error) console.error("Não consegui guardar a foto original:", error.message);
+            });
           const { data: publicUrlData } = supabase.storage
             .from("fotos-pecas")
             .getPublicUrl(nomeArquivo);
