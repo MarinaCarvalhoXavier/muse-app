@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
       ? (body.subtiposConhecidos as Record<string, string[]>)
       : {};
   const ocasioes = Array.isArray(body?.ocasioes) ? (body.ocasioes as string[]) : [];
+  const coresDisponiveis = Array.isArray(body?.coresDisponiveis) ? (body.coresDisponiveis as string[]) : [];
 
   if (!fotoUrl && !imagemBase64) {
     return NextResponse.json({ error: "Envie fotoUrl ou imagemBase64." }, { status: 400 });
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
       `${subtiposTexto || "  (nenhum subtipo ainda)"}\n\n` +
       `Ocasiões já usadas por essa pessoa: ${ocasioes.length ? ocasioes.join(", ") : "nenhuma ainda"}.\n\n` +
       "Responda APENAS com um JSON válido, sem nenhum texto antes ou depois, no formato:\n" +
-      '{"tipo": "string", "subtipos": ["string", ...], "ocasioes": ["string", ...], "peso": "string"}\n\n' +
+      '{"tipo": "string", "subtipos": ["string", ...], "ocasioes": ["string", ...], "peso": "string", "cores": ["string", ...]}\n\n' +
       "Regras:\n" +
       "- tipo: escolha OBRIGATORIAMENTE uma das categorias principais listadas acima (nunca invente uma nova aqui).\n" +
       "- subtipos: uma LISTA com o(s) detalhe(s) da peça dentro dessa categoria (ex: Regata, Cropped, " +
@@ -71,7 +72,9 @@ export async function POST(req: NextRequest) {
       `- peso: escolha somente um destes valores exatos: ${PESOS_VALIDOS.join(", ")}. ` +
       "\"Leve\" pra tecidos finos/arejados (linho, viscose, regata), \"Quente\" pra peças que esquentam " +
       "mais (moletom, jaqueta, tricô grosso, casaco), e \"Neutra\" pro meio-termo ou quando não der " +
-      "pra saber pelo tecido (ex: acessórios, bolsas, sapatos).";
+      "pra saber pelo tecido (ex: acessórios, bolsas, sapatos).\n" +
+      `- cores: de 1 a 2 cores da peça, a principal primeiro, escolhidas SOMENTE desta lista (nomes exatos): ${coresDisponiveis.join(", ")}. ` +
+      "Metal amarelado (ouro, latão) é Dourado; metal claro (prata, aço) é Prateado. Ignore o fundo e a pele.";
 
     const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -135,6 +138,13 @@ export async function POST(req: NextRequest) {
     const ocasioesSugeridas = Array.isArray(sugestao.ocasioes)
       ? sugestao.ocasioes.filter((o: unknown): o is string => typeof o === "string" && o.trim().length > 0)
       : [];
+    const coresSugeridas = Array.isArray(sugestao.cores)
+      ? sugestao.cores
+          .filter((c: unknown): c is string => typeof c === "string")
+          .map((c: string) => c.trim())
+          .filter((c: string) => coresDisponiveis.includes(c))
+          .slice(0, 2)
+      : [];
     const pesoSugerido =
       typeof sugestao.peso === "string" && PESOS_VALIDOS.includes(sugestao.peso) ? sugestao.peso : null;
 
@@ -143,6 +153,7 @@ export async function POST(req: NextRequest) {
       subtipos: subtiposSugeridos,
       ocasioes: ocasioesSugeridas,
       peso: pesoSugerido,
+      cores: coresSugeridas,
     });
   } catch (err) {
     console.error("Erro ao sugerir tags:", err);

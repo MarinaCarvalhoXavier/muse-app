@@ -1,5 +1,6 @@
 "use client";
 
+import { estiloSwatch, nomeDaCor } from "@/lib/cores";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Piece } from "@/lib/types";
@@ -120,14 +121,12 @@ export default function DetalhePecaPage() {
             <div className="border-b border-black/5 pb-3">
               <p className="text-xs uppercase tracking-wide text-black/40">Cor</p>
               {piece.cores && piece.cores.length > 0 ? (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
                   {piece.cores.map((c) => (
-                    <span
-                      key={c}
-                      className="h-5 w-5 rounded-full border border-black/15"
-                      style={{ backgroundColor: c }}
-                      aria-label={c}
-                    />
+                    <span key={c} className="flex items-center gap-1.5 text-sm">
+                      <span className="h-5 w-5 rounded-full border border-black/15" style={estiloSwatch(c)} />
+                      {nomeDaCor(c)}
+                    </span>
                   ))}
                 </div>
               ) : (

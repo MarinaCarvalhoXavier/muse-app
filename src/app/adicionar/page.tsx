@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Ocasiao, Peso, Piece, Tipo } from "@/lib/types";
 import { generateId } from "@/lib/id";
 import { supabase } from "@/lib/supabase";
+import { CORES, HEX_PADRAO, corMaisProximaDaPaleta, estiloSwatch, hexDoNome, nomeDaCor } from "@/lib/cores";
 import {
   addCustomCor,
   addCustomOcasiao,
@@ -46,20 +47,7 @@ const PESOS: Peso[] = ["Leve", "Neutra", "Quente"];
 // Paleta enxuta de cores "guarda-chuva" — no MVP cada peça usa a cor básica
 // mais próxima (ex: azul bebê e azul marinho caem ambos em "Azul"). Dá pra
 // refinar isso depois; por enquanto evita a lista de cores crescer sem fim.
-const CORES_PADRAO = [
-  "#000000", // Preto
-  "#FFFFFF", // Branco
-  "#9CA3AF", // Cinza
-  "#D9C9A8", // Bege
-  "#8B7355", // Marrom
-  "#B23A48", // Vermelho
-  "#D9743E", // Laranja
-  "#E0B94F", // Amarelo
-  "#5C7A54", // Verde
-  "#3B4A63", // Azul
-  "#6B4E71", // Roxo
-  "#C97B94", // Rosa
-];
+const CORES_PADRAO = HEX_PADRAO;
 
 export default function AdicionarPecaPage() {
   // useSearchParams precisa de um Suspense em volta no Next.js.
@@ -96,7 +84,8 @@ function AdicionarPecaConteudo() {
     return mapa;
   });
   const [ocasioes, setOcasioes] = useState<Ocasiao[]>([]);
-  const [coresSelecionadas, setCoresSelecionadas] = useState<string[]>([CORES_PADRAO[0]]);
+  // Nenhuma cor marcada por padrão (antes o Preto vinha marcado e ficava junto da cor detectada).
+  const [coresSelecionadas, setCoresSelecionadas] = useState<string[]>([]);
   const [peso, setPeso] = useState<Peso | null>(null);
   const [favorita, setFavorita] = useState(false);
   const [detalhesAbertos, setDetalhesAbertos] = useState(false);
@@ -170,31 +159,10 @@ function AdicionarPecaConteudo() {
     setCoresSelecionadas((prev) => (prev.includes(novaCor) ? prev : [...prev, novaCor]));
   }
 
-  // A cor detectada na foto quase nunca bate exatamente com uma cor da
-  // paleta — em vez de criar uma cor nova pra cada peça (o que fazia a
-  // lista crescer sem parar), escolhemos a cor "guarda-chuva" mais parecida.
-  function corMaisProxima(hex: string): string {
-    const r1 = parseInt(hex.slice(1, 3), 16);
-    const g1 = parseInt(hex.slice(3, 5), 16);
-    const b1 = parseInt(hex.slice(5, 7), 16);
-    let melhor = CORES_PADRAO[0];
-    let menorDistancia = Infinity;
-    for (const candidata of CORES_PADRAO) {
-      const r2 = parseInt(candidata.slice(1, 3), 16);
-      const g2 = parseInt(candidata.slice(3, 5), 16);
-      const b2 = parseInt(candidata.slice(5, 7), 16);
-      const distancia = (r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2;
-      if (distancia < menorDistancia) {
-        menorDistancia = distancia;
-        melhor = candidata;
-      }
-    }
-    return melhor;
-  }
-
+  // Plano B: a média de pixels só entra se nem a IA nem a pessoa escolheram uma cor.
   function aplicarCorDetectada(hex: string) {
-    const maisProxima = corMaisProxima(hex);
-    setCoresSelecionadas((prev) => (prev.includes(maisProxima) ? prev : [...prev, maisProxima]));
+    const maisProxima = corMaisProximaDaPaleta(hex);
+    setCoresSelecionadas((prev) => (prev.length > 0 ? prev : [maisProxima]));
   }
 
   async function converterParaJpeg(file: Blob, maiorLado = 1600): Promise<Blob> {
@@ -401,6 +369,7 @@ function AdicionarPecaConteudo() {
           imagemBase64,
           mediaType: "image/jpeg",
           tiposPrincipais: tipos,
+          coresDisponiveis: CORES.map((c) => c.nome),
           subtiposConhecidos,
           ocasioes: ocasioesOpcoes,
         }),
@@ -434,6 +403,14 @@ function AdicionarPecaConteudo() {
             handleNovaOcasiao(o);
           }
         }
+      }
+
+      // Cores sugeridas pela IA (por nome) substituem qualquer palpite anterior.
+      if (Array.isArray(sugestao.cores)) {
+        const hexes = (sugestao.cores as string[])
+          .map((n) => hexDoNome(n))
+          .filter((h): h is string => !!h);
+        if (hexes.length > 0) setCoresSelecionadas(Array.from(new Set(hexes)));
       }
 
       if (typeof sugestao.peso === "string" && PESOS.includes(sugestao.peso as Peso)) {
@@ -695,8 +672,9 @@ function AdicionarPecaConteudo() {
                     ? "ring-2 ring-[var(--color-ink)] ring-offset-2 ring-offset-[var(--color-paper)]"
                     : ""
                 }`}
-                style={{ backgroundColor: c }}
-                aria-label={c}
+                style={estiloSwatch(c)}
+                aria-label={nomeDaCor(c)}
+                title={nomeDaCor(c)}
               />
             ))}
             <label
@@ -712,6 +690,11 @@ function AdicionarPecaConteudo() {
               />
             </label>
           </div>
+          <p className="mt-2 text-xs text-black/50">
+            {coresSelecionadas.length > 0
+              ? coresSelecionadas.map(nomeDaCor).join(", ")
+              : "Nenhuma cor escolhida"}
+          </p>
         </Field>
 
         <Field label="Peso da peça">

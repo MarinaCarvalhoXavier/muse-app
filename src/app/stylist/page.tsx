@@ -1,5 +1,6 @@
 "use client";
 
+import { nomeDaCor } from "@/lib/cores";
 import { useEffect, useState } from "react";
 import { Ocasiao, Outfit, OutfitItem, Peso, Piece } from "@/lib/types";
 import { generateId } from "@/lib/id";
@@ -21,7 +22,8 @@ function pecaResumo(p: Piece) {
     tipo: p.tipo,
     subtipos: p.subtipos ?? [],
     ocasioes: p.ocasioes,
-    cores: p.cores ?? [],
+    // Nome da cor ("Azul-claro") em vez do código, pra IA não errar a cor da peça.
+    cores: (p.cores ?? []).map(nomeDaCor),
     peso: p.peso,
     marca: p.marca,
     estampa: p.estampa,

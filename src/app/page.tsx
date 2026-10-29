@@ -1,5 +1,6 @@
 "use client";
 
+import { estiloSwatch, nomeDaCor } from "@/lib/cores";
 import { useEffect, useMemo, useState } from "react";
 import { Piece } from "@/lib/types";
 import { getPieces, updateFavorita } from "@/lib/storage";
@@ -259,11 +260,12 @@ export default function ArmarioPage() {
                           type="button"
                           key={c}
                           onClick={() => toggleFiltroAvancado("cores", c)}
-                          aria-label={c}
+                          aria-label={nomeDaCor(c)}
+                          title={nomeDaCor(c)}
                           className={`h-9 w-9 rounded-full border border-black/15 ${
                             ativa ? "ring-2 ring-[var(--color-ink)] ring-offset-2 ring-offset-[var(--color-paper)]" : ""
                           }`}
-                          style={{ backgroundColor: c }}
+                          style={estiloSwatch(c)}
                         />
                       );
                     })}
