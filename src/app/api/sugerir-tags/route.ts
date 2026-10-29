@@ -13,6 +13,10 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null);
   const fotoUrl = body?.fotoUrl as string | undefined;
+  // Alternativa à URL: a foto original já vem pronta em base64 do celular.
+  // Assim a IA começa a analisar na hora, sem esperar a Photoroom terminar.
+  const imagemBase64 = typeof body?.imagemBase64 === "string" ? (body.imagemBase64 as string) : null;
+  const mediaType = typeof body?.mediaType === "string" ? (body.mediaType as string) : "image/jpeg";
   const tiposPrincipais = Array.isArray(body?.tiposPrincipais) ? (body.tiposPrincipais as string[]) : [];
   const subtiposConhecidos =
     body?.subtiposConhecidos && typeof body.subtiposConhecidos === "object"
@@ -20,28 +24,35 @@ export async function POST(req: NextRequest) {
       : {};
   const ocasioes = Array.isArray(body?.ocasioes) ? (body.ocasioes as string[]) : [];
 
-  if (!fotoUrl) {
-    return NextResponse.json({ error: "fotoUrl é obrigatória." }, { status: 400 });
+  if (!fotoUrl && !imagemBase64) {
+    return NextResponse.json({ error: "Envie fotoUrl ou imagemBase64." }, { status: 400 });
   }
 
   try {
     // Busca a imagem já processada (fundo removido) e converte pra base64,
     // que é o formato que a API da Anthropic espera pra visão.
-    const imagemRes = await fetch(fotoUrl);
-    if (!imagemRes.ok) {
-      return NextResponse.json({ error: "Não foi possível carregar a foto." }, { status: 502 });
+    let base64: string;
+    let contentType: string;
+    if (imagemBase64) {
+      base64 = imagemBase64;
+      contentType = mediaType;
+    } else {
+      const imagemRes = await fetch(fotoUrl as string);
+      if (!imagemRes.ok) {
+        return NextResponse.json({ error: "Não foi possível carregar a foto." }, { status: 502 });
+      }
+      contentType = imagemRes.headers.get("content-type") || "image/png";
+      base64 = Buffer.from(await imagemRes.arrayBuffer()).toString("base64");
     }
-    const contentType = imagemRes.headers.get("content-type") || "image/png";
-    const buffer = Buffer.from(await imagemRes.arrayBuffer());
-    const base64 = buffer.toString("base64");
 
     const subtiposTexto = Object.entries(subtiposConhecidos)
       .map(([tipo, lista]) => `  - ${tipo}: ${lista.length ? lista.join(", ") : "(nenhum subtipo ainda)"}`)
       .join("\n");
 
     const prompt =
-      "Você está ajudando a organizar um armário digital. Olhe a foto da peça de roupa " +
-      "(fundo já removido, efeito vitrine) e sugira como categorizá-la.\n\n" +
+      "Você está ajudando a organizar um armário digital. Olhe a foto da peça " +
+      "(roupa, sapato ou acessório) e sugira como categorizá-la. A foto pode ser a original, " +
+      "tirada pela própria pessoa, com fundo (cama, cabide, chão etc.): considere só a peça principal.\n\n" +
       `Categorias principais (tipo) disponíveis: ${tiposPrincipais.join(", ")}.\n` +
       "Subtipos (detalhe) já usados por essa pessoa em cada categoria:\n" +
       `${subtiposTexto || "  (nenhum subtipo ainda)"}\n\n` +

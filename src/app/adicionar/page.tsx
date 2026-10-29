@@ -177,13 +177,13 @@ export default function AdicionarPecaPage() {
     setCoresSelecionadas((prev) => (prev.includes(maisProxima) ? prev : [...prev, maisProxima]));
   }
 
-  async function converterParaJpeg(file: File): Promise<Blob> {
+  async function converterParaJpeg(file: Blob, maiorLado = 1600): Promise<Blob> {
     const bitmap = await createImageBitmap(file);
 
     // Fotos de celular costumam vir enormes (10-15MB), o que deixa o upload e
     // o processamento da IA bem mais lentos sem ganho real de qualidade pro
     // nosso caso. Redimensionamos pro lado maior ter no máximo 1600px.
-    const MAIOR_LADO_MAX = 1600;
+    const MAIOR_LADO_MAX = maiorLado;
     const escala = Math.min(1, MAIOR_LADO_MAX / Math.max(bitmap.width, bitmap.height));
     const largura = Math.round(bitmap.width * escala);
     const altura = Math.round(bitmap.height * escala);
@@ -347,10 +347,20 @@ export default function AdicionarPecaPage() {
     }
   }
 
-  async function handleSugerirTags(url: string) {
+  function blobParaBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const leitor = new FileReader();
+      leitor.onload = () => resolve(String(leitor.result).split(",")[1] ?? "");
+      leitor.onerror = () => reject(new Error("Falha ao ler a imagem."));
+      leitor.readAsDataURL(blob);
+    });
+  }
+
+  async function handleSugerirTags(foto: Blob) {
     setSugerindoTags(true);
     setErroSugestao(null);
     try {
+      const imagemBase64 = await blobParaBase64(foto);
       const subtiposConhecidos: Record<string, string[]> = {};
       for (const t of tipos) {
         subtiposConhecidos[t] = [...(SUBTIPOS_PADRAO[t] ?? []), ...(customSubtipos[t] ?? [])];
@@ -359,7 +369,8 @@ export default function AdicionarPecaPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fotoUrl: url,
+          imagemBase64,
+          mediaType: "image/jpeg",
           tiposPrincipais: tipos,
           subtiposConhecidos,
           ocasioes: ocasioesOpcoes,
@@ -420,6 +431,13 @@ export default function AdicionarPecaPage() {
       // Fotos de celular (ex: HEIC do iPhone) não são aceitas pela Photoroom,
       // então convertemos tudo pra JPEG antes de enviar.
       const jpeg = await converterParaJpeg(file);
+
+      // A IA dos campos roda AO MESMO TEMPO que a Photoroom, usando a foto
+      // original (menor, pra ir rápido). Antes ela só começava depois da
+      // vitrine pronta, o que somava ~2-3s de espera parada.
+      converterParaJpeg(file, 1024)
+        .then((jpegPequeno) => handleSugerirTags(jpegPequeno))
+        .catch((err) => console.error("Erro ao preparar foto pra IA:", err));
       const formData = new FormData();
       formData.append("imageFile", jpeg, "peca.jpg");
       const res = await fetch("/api/remover-fundo", {
@@ -449,7 +467,6 @@ export default function AdicionarPecaPage() {
         if (corDetectada) {
           aplicarCorDetectada(corDetectada);
         }
-        handleSugerirTags(urlFinal);
       }
     } catch (err) {
       console.error(err);
@@ -511,8 +528,9 @@ export default function AdicionarPecaPage() {
                 className="h-full w-full object-contain"
               />
               {processandoFoto && (
-                <div className="absolute inset-0 flex items-center justify-center bg-white/70 text-sm text-black/60">
-                  Removendo fundo e ajustando a peça…
+                <div className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs text-black/70 shadow-sm">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--color-lime)] ring-1 ring-black/20" />
+                  Deixando com cara de vitrine…
                 </div>
               )}
               <label className="absolute bottom-2 right-2 cursor-pointer rounded-full bg-black/70 px-3 py-1.5 text-xs text-white">
@@ -667,7 +685,7 @@ export default function AdicionarPecaPage() {
           disabled={salvando || processandoFoto}
           className="w-full rounded-full bg-[var(--color-lime)] py-3 font-medium text-[var(--color-ink)] disabled:opacity-60"
         >
-          {salvando ? "Salvando..." : processandoFoto ? "Aguarde a foto..." : "Salvar no armário"}
+          {salvando ? "Salvando..." : processandoFoto ? "Finalizando a foto…" : "Salvar no armário"}
         </button>
       </form>
     </main>
