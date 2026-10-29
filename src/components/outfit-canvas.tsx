@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { OutfitItem, Piece } from "@/lib/types";
 import { generateId } from "@/lib/id";
+import { nomeDoRecorte } from "@/lib/recorte";
 import { FiltroTipos, TODAS, filtrarPorTipo } from "@/components/filtro-tipos";
 
 const LARGURA_PADRAO = 38; // % da largura do canvas
@@ -22,6 +23,15 @@ export function OutfitCanvas({
   const [arrastando, setArrastando] = useState<{ pecaId: string; x: number; y: number } | null>(null);
   const [removendoFundoId, setRemovendoFundoId] = useState<string | null>(null);
   const [erroRemoverFundo, setErroRemoverFundo] = useState<string | null>(null);
+  const [falhouRecorte, setFalhouRecorte] = useState<Set<string>>(new Set());
+
+  // Sempre a lista mais recente de itens, pra atualizar um item depois de uma
+  // chamada demorada sem desfazer mudanças feitas nesse meio-tempo.
+  const itensRef = useRef(itens);
+  useEffect(() => {
+    itensRef.current = itens;
+  }, [itens]);
+  const emAndamento = useRef<Set<string>>(new Set());
 
   const pecasNoCanvas = new Set(itens.map((i) => i.pecaId));
   const pecasDisponiveis = pieces.filter((p) => p.fotoUrl);
@@ -36,7 +46,7 @@ export function OutfitCanvas({
   }
 
   function onChangeItem(id: string, patch: Partial<OutfitItem>) {
-    onChange(itens.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+    onChange(itensRef.current.map((i) => (i.id === id ? { ...i, ...patch } : i)));
   }
 
   // Arrastar uma peça da tira de baixo pra dentro do canvas.
@@ -142,31 +152,58 @@ export function OutfitCanvas({
     setSelecionadoId(null);
   }
 
+  // O item ainda não tem o recorte certo da foto atual da peça?
+  function precisaRecorte(item: OutfitItem): boolean {
+    const peca = pieces.find((p) => p.id === item.pecaId);
+    if (!peca?.fotoUrl) return false;
+    return !item.fotoSemFundoUrl?.includes(nomeDoRecorte(peca.fotoUrl));
+  }
+
   async function removerFundoDoItem(item: OutfitItem) {
     const peca = pieces.find((p) => p.id === item.pecaId);
-    const fotoAtual = item.fotoSemFundoUrl ?? peca?.fotoUrl;
-    if (!fotoAtual) return;
+    if (!peca?.fotoUrl || emAndamento.current.has(item.id)) return;
+    emAndamento.current.add(item.id);
     setRemovendoFundoId(item.id);
     setErroRemoverFundo(null);
     try {
       const res = await fetch("/api/remover-fundo-item", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fotoUrl: fotoAtual }),
+        body: JSON.stringify({ fotoUrl: peca.fotoUrl }),
       });
       const dados = await res.json().catch(() => null);
       if (!res.ok || !dados?.url) {
+        setFalhouRecorte((prev) => new Set(prev).add(item.id));
         setErroRemoverFundo(dados?.error || "Não consegui remover o fundo agora.");
         return;
       }
+      setFalhouRecorte((prev) => {
+        const novo = new Set(prev);
+        novo.delete(item.id);
+        return novo;
+      });
       onChangeItem(item.id, { fotoSemFundoUrl: dados.url as string });
     } catch (err) {
       console.error("Erro ao remover fundo do item:", err);
+      setFalhouRecorte((prev) => new Set(prev).add(item.id));
       setErroRemoverFundo("Não consegui remover o fundo agora.");
     } finally {
-      setRemovendoFundoId(null);
+      emAndamento.current.delete(item.id);
+      setRemovendoFundoId((atual) => (atual === item.id ? null : atual));
     }
   }
+
+  // Recorte automático: toda peça que entra no look (ou que está num look antigo
+  // sem o recorte certo) tem o fundo removido sozinha, uma de cada vez.
+  useEffect(() => {
+    const pendente = itens.find(
+      (i) => precisaRecorte(i) && !falhouRecorte.has(i.id) && !emAndamento.current.has(i.id)
+    );
+    if (pendente && emAndamento.current.size === 0) {
+      removerFundoDoItem(pendente);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itens, pieces, falhouRecorte, removendoFundoId]);
 
   const itemSelecionado = itens.find((i) => i.id === selecionadoId) ?? null;
   const pecaArrastando = arrastando ? pieces.find((p) => p.id === arrastando.pecaId) : null;
@@ -195,6 +232,11 @@ export function OutfitCanvas({
                   selecionado ? "outline outline-2 outline-[var(--color-ink)] outline-offset-2" : ""
                 }`}
               >
+                {removendoFundoId === item.id && (
+                  <span className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-white/90 px-2 py-1 text-[10px] text-black/60 shadow-sm">
+                    Tirando o fundo…
+                  </span>
+                )}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={fotoExibida}
@@ -224,18 +266,21 @@ export function OutfitCanvas({
 
       {itemSelecionado && (
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-          <button
-            type="button"
-            onClick={() => removerFundoDoItem(itemSelecionado)}
-            disabled={removendoFundoId === itemSelecionado.id || !!itemSelecionado.fotoSemFundoUrl}
-            className="rounded-full border border-black/20 px-3 py-1.5 text-xs text-black/70 disabled:opacity-50"
-          >
-            {removendoFundoId === itemSelecionado.id
-              ? "Removendo fundo…"
-              : itemSelecionado.fotoSemFundoUrl
-              ? "Fundo já removido"
-              : "Remover fundo"}
-          </button>
+          {falhouRecorte.has(itemSelecionado.id) && (
+            <button
+              type="button"
+              onClick={() => {
+                setFalhouRecorte((prev) => {
+                  const novo = new Set(prev);
+                  novo.delete(itemSelecionado.id);
+                  return novo;
+                });
+              }}
+              className="rounded-full border border-black/20 px-3 py-1.5 text-xs text-black/70"
+            >
+              Tentar tirar o fundo de novo
+            </button>
+          )}
           <button
             type="button"
             onClick={() => trazerParaFrente(itemSelecionado.id)}
