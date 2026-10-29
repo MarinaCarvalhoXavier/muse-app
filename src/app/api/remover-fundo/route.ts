@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 
 const PROMPT =
   "Give the main garment a natural worn look with real volume and depth. " +
@@ -20,35 +19,35 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseKey) {
-    return NextResponse.json(
-      { error: "Variáveis do Supabase não configuradas no servidor." },
-      { status: 500 }
-    );
-  }
-
   const incoming = await req.formData();
   const file = incoming.get("imageFile");
   if (!(file instanceof Blob)) {
     return NextResponse.json({ error: "Nenhuma imagem enviada." }, { status: 400 });
   }
 
-  const photoroomForm = new FormData();
-  photoroomForm.append("imageFile", file, "peca.jpg");
-  photoroomForm.append("editWithAI.mode", "ai.auto");
-  photoroomForm.append("editWithAI.prompt", PROMPT);
+  // Pede a vitrine em JPEG (fundo branco não precisa de PNG): a imagem volta
+  // bem mais leve. Se a Photoroom recusar o parâmetro, tenta de novo em PNG.
+  async function chamarPhotoroom(comJpeg: boolean) {
+    const form = new FormData();
+    form.append("imageFile", file as Blob, "peca.jpg");
+    form.append("editWithAI.mode", "ai.auto");
+    form.append("editWithAI.prompt", PROMPT);
+    if (comJpeg) form.append("export.format", "jpeg");
+    return fetch("https://image-api.photoroom.com/v2/edit", {
+      method: "POST",
+      headers: { "x-api-key": apiKey as string },
+      body: form,
+    });
+  }
 
   let photoroomRes: Response;
   try {
-    photoroomRes = await fetch("https://image-api.photoroom.com/v2/edit", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-      },
-      body: photoroomForm,
-    });
+    photoroomRes = await chamarPhotoroom(true);
+    if (photoroomRes.status === 400) {
+      const texto = await photoroomRes.text().catch(() => "");
+      console.warn("Photoroom recusou export.format=jpeg, tentando em PNG:", texto);
+      photoroomRes = await chamarPhotoroom(false);
+    }
   } catch (err) {
     console.error("Erro de rede ao chamar Photoroom:", err);
     return NextResponse.json({ error: "Não foi possível falar com a Photoroom." }, { status: 502 });
@@ -63,20 +62,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const imagemBuffer = Buffer.from(await photoroomRes.arrayBuffer());
-  const supabase = createClient(supabaseUrl, supabaseKey);
-  const nomeArquivo = `${crypto.randomUUID()}.png`;
-
-  const { error: uploadError } = await supabase.storage
-    .from("fotos-pecas")
-    .upload(nomeArquivo, imagemBuffer, { contentType: "image/png" });
-
-  if (uploadError) {
-    console.error("Erro ao subir imagem pro Supabase:", uploadError.message);
-    return NextResponse.json({ error: uploadError.message }, { status: 500 });
-  }
-
-  const { data: publicUrlData } = supabase.storage.from("fotos-pecas").getPublicUrl(nomeArquivo);
-
-  return NextResponse.json({ url: publicUrlData.publicUrl });
+  // Devolve a imagem direto pro celular. Antes o servidor subia a imagem pro
+  // Supabase e o celular tinha que baixar de lá de novo (uma ida e volta a mais).
+  // Agora o celular ajusta o enquadramento e faz um único upload.
+  const imagem = await photoroomRes.arrayBuffer();
+  return new NextResponse(imagem, {
+    status: 200,
+    headers: {
+      "Content-Type": photoroomRes.headers.get("content-type") || "image/png",
+      "Cache-Control": "no-store",
+    },
+  });
 }

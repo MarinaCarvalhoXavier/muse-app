@@ -453,31 +453,32 @@ export default function AdicionarPecaPage() {
         method: "POST",
         body: formData,
       });
-      const data = await res.json();
       if (!res.ok) {
-        setErroFoto(data.error || "Não foi possível processar a foto.");
+        const data = await res.json().catch(() => null);
+        setErroFoto(data?.error || "Não foi possível processar a foto.");
       } else {
-        let urlFinal = data.url;
-        const enquadrada = await normalizarEnquadramento(data.url);
-        if (enquadrada) {
-          const nomeArquivo = `${generateId()}.jpg`;
-          const { error: uploadError } = await supabase.storage
+        // A vitrine chega direto do servidor; ajustamos a margem aqui no
+        // celular e fazemos um único upload pro Supabase.
+        const vitrine = await res.blob();
+        const enquadrada = await normalizarEnquadramento(URL.createObjectURL(vitrine));
+        const fotoFinal = enquadrada ?? vitrine;
+        const ehJpeg = fotoFinal.type === "image/jpeg";
+        const nomeArquivo = `${generateId()}.${ehJpeg ? "jpg" : "png"}`;
+        const { error: uploadError } = await supabase.storage
+          .from("fotos-pecas")
+          .upload(nomeArquivo, fotoFinal, { contentType: ehJpeg ? "image/jpeg" : "image/png" });
+        if (uploadError) {
+          setErroFoto(`Não consegui salvar a foto: ${uploadError.message}`);
+        } else {
+          const { data: publicUrlData } = supabase.storage
             .from("fotos-pecas")
-            .upload(nomeArquivo, enquadrada, { contentType: "image/jpeg" });
-          if (!uploadError) {
-            const { data: publicUrlData } = supabase.storage
-              .from("fotos-pecas")
-              .getPublicUrl(nomeArquivo);
-            urlFinal = publicUrlData.publicUrl;
+            .getPublicUrl(nomeArquivo);
+          setFotoUrl(publicUrlData.publicUrl);
+          // A cor é lida da imagem que já está na memória do celular, sem baixar de novo.
+          const corDetectada = await extrairCorPredominante(URL.createObjectURL(fotoFinal));
+          if (corDetectada) {
+            aplicarCorDetectada(corDetectada);
           }
-        }
-        setFotoUrl(urlFinal);
-        // A cor é lida da imagem que já está na memória do celular, sem baixar de novo.
-        const corDetectada = await extrairCorPredominante(
-          enquadrada ? URL.createObjectURL(enquadrada) : urlFinal
-        );
-        if (corDetectada) {
-          aplicarCorDetectada(corDetectada);
         }
       }
     } catch (err) {
