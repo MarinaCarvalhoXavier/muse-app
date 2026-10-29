@@ -6,6 +6,10 @@ import { generateId } from "@/lib/id";
 
 const LARGURA_PADRAO = 38; // % da largura do canvas
 
+// Ordem preferida dos filtros; tipos criados pela pessoa entram depois, em ordem alfabética.
+const ORDEM_TIPOS = ["Parte de cima", "Parte de baixo", "Vestidos", "Macacões", "Casaco", "Sapatos", "Bolsas", "Acessórios"];
+const TODAS = "Todas";
+
 export function OutfitCanvas({
   pieces,
   itens,
@@ -23,6 +27,18 @@ export function OutfitCanvas({
 
   const pecasNoCanvas = new Set(itens.map((i) => i.pecaId));
   const pecasDisponiveis = pieces.filter((p) => p.fotoUrl);
+
+  // Filtro por tipo na tira de peças: com o armário crescendo, achar uma bolsa
+  // no meio de todas as fotos misturadas fica difícil.
+  const [tipoFiltro, setTipoFiltro] = useState<string>(TODAS);
+  const tiposPresentes = Array.from(new Set(pecasDisponiveis.map((p) => p.tipo))).sort((a, b) => {
+    const ia = ORDEM_TIPOS.indexOf(a);
+    const ib = ORDEM_TIPOS.indexOf(b);
+    if (ia !== -1 || ib !== -1) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    return a.localeCompare(b, "pt-BR");
+  });
+  const pecasFiltradas =
+    tipoFiltro === TODAS ? pecasDisponiveis : pecasDisponiveis.filter((p) => p.tipo === tipoFiltro);
 
   function getCanvasRect() {
     return canvasRef.current?.getBoundingClientRect() ?? null;
@@ -255,8 +271,32 @@ export function OutfitCanvas({
       {erroRemoverFundo && <p className="mt-2 text-center text-xs text-red-600">{erroRemoverFundo}</p>}
 
       <p className="mb-2 mt-6 text-xs text-black/50">Arraste uma peça para o canvas</p>
+      {tiposPresentes.length > 1 && (
+        <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
+          {[TODAS, ...tiposPresentes].map((t) => {
+            const quantidade =
+              t === TODAS ? pecasDisponiveis.length : pecasDisponiveis.filter((p) => p.tipo === t).length;
+            const ativo = tipoFiltro === t;
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTipoFiltro(t)}
+                aria-pressed={ativo}
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium ${
+                  ativo
+                    ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white"
+                    : "border-black/15 text-black/70"
+                }`}
+              >
+                {t} <span className={ativo ? "text-white/60" : "text-black/35"}>{quantidade}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2">
-        {pecasDisponiveis.map((p) => (
+        {pecasFiltradas.map((p) => (
           <button
             key={p.id}
             type="button"
