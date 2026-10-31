@@ -49,7 +49,7 @@ const PROMPT_VERIFICA =
 
 // Ordem de tentativa pra gerar a vitrine (cada vitrine gerada passa pelo verificador):
 // 1. Photoroom com chave de produção (sem marca d'água, 10 grátis por mês);
-// 2. fal.ai Nano Banana (~US$ 0,04, ~9 s);
+// 2. fal.ai Nano Banana (~US$ 0,04, ~9 s), com o fundo limpo pelo recorte (BiRefNet) no fim;
 // 3. fal.ai Nano Banana Pro (~US$ 0,15, ~22 s, mais caprichado), só se a 2 for reprovada;
 // 4. fal.ai BiRefNet: recorte fiel da foto real, sem manequim (fração de centavo), se nada passou;
 // 5. Photoroom sandbox (grátis e ilimitada, com marca d'água), último recurso.
@@ -208,7 +208,16 @@ export async function POST(req: NextRequest) {
         const gerada = await chamarFal(chaveFal, modelo, corpo);
         if (!gerada) continue;
         const v = await verificar(gerada.bytes, gerada.tipo);
-        if (v.aprovado) { resultado = gerada; modo = m; break; }
+        if (v.aprovado) {
+          // O modelo às vezes devolve a peça num fundo cinza-claro/bege (ex.: foto de
+          // brinco já num fundo liso). Passar a vitrine pelo recorte garante fundo
+          // transparente; o celular coloca no branco com a margem padrão.
+          const dataUriGerada = `data:${gerada.tipo};base64,${gerada.bytes.toString("base64")}`;
+          const limpa = await chamarFal(chaveFal, "fal-ai/birefnet/v2", { image_url: dataUriGerada });
+          resultado = limpa ?? gerada;
+          modo = m;
+          break;
+        }
         reprovados.push(`${modelo}: ${v.motivo}`);
       }
     }
