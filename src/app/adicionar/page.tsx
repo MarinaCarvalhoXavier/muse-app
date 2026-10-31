@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Ocasiao, Peso, Piece, Tipo } from "@/lib/types";
 import { generateId } from "@/lib/id";
@@ -21,6 +22,7 @@ import {
   getCustomSubtipos,
   getCustomTipos,
 } from "@/lib/storage";
+import { cabecalhosAuth, useSessao } from "@/lib/sessao";
 
 const TIPOS_PADRAO: Tipo[] = [
   "Parte de cima",
@@ -52,11 +54,39 @@ const PESOS: Peso[] = ["Leve", "Neutra", "Quente"];
 const CORES_PADRAO = HEX_PADRAO;
 
 export default function AdicionarPecaPage() {
+  const { carregando, dona } = useSessao();
+  if (carregando) return null;
+  // Visitante: cadastrar usa IA paga e grava no armário, então mostra só a explicação.
+  if (!dona) return <AvisoCadastroVisitante />;
   // useSearchParams precisa de um Suspense em volta no Next.js.
   return (
     <Suspense fallback={null}>
       <AdicionarPecaConteudo />
     </Suspense>
+  );
+}
+
+function AvisoCadastroVisitante() {
+  return (
+    <main className="px-4 pb-40 pt-8">
+      <p className="text-xs uppercase tracking-wide text-black/40">Nova peça</p>
+      <h1 className="font-[var(--font-display)] text-2xl">Adicionar peça</h1>
+      <div className="mt-6 rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
+        <p className="text-sm font-medium">Como funciona o cadastro</p>
+        <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-black/60">
+          <li>A dona tira uma foto da peça: vestindo no espelho, na cama ou no cabide.</li>
+          <li>A IA transforma a foto numa vitrine com manequim invisível.</li>
+          <li>Outra IA confere se a peça continua igual à real (sem corpo, mesmo comprimento e cor).</li>
+          <li>O Claude sugere tipo, cores e ocasiões; ela só confirma e salva.</li>
+        </ol>
+        <p className="mt-4 text-xs text-black/40">
+          No modo demonstração o cadastro fica desligado, porque usa IA paga e grava no armário real.
+        </p>
+      </div>
+      <Link href="/entrar" className="mt-6 block text-center text-sm text-black/50 underline underline-offset-2">
+        Sou a dona, quero entrar
+      </Link>
+    </main>
   );
 }
 
@@ -436,7 +466,7 @@ function AdicionarPecaConteudo() {
       }
       const res = await fetch("/api/sugerir-tags", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await cabecalhosAuth()) },
         body: JSON.stringify({
           imagemBase64,
           mediaType: "image/jpeg",
@@ -542,7 +572,7 @@ function AdicionarPecaConteudo() {
 
       const res = await fetch("/api/remover-fundo-item", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await cabecalhosAuth()) },
         body: JSON.stringify({ fotoUrl: original }),
       });
       const dados = await res.json().catch(() => null);
@@ -596,6 +626,7 @@ function AdicionarPecaConteudo() {
       formData.append("imageFile", jpeg, "peca.jpg");
       const res = await fetch("/api/remover-fundo", {
         method: "POST",
+        headers: await cabecalhosAuth(),
         body: formData,
       });
       if (!res.ok) {

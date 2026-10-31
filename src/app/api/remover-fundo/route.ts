@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { donaDaRequisicao, respostaModoVisitante } from "@/lib/auth-servidor";
 
 const PROMPT =
   "Give the main garment a natural worn look with real volume and depth. " +
@@ -66,6 +67,8 @@ export const maxDuration = 60;
 type Modo = "producao" | "fal" | "fal-pro" | "recorte" | "sandbox";
 
 export async function POST(req: NextRequest) {
+  // Gera custo de IA: só a dona logada pode usar.
+  if (!(await donaDaRequisicao(req))) return respostaModoVisitante();
   const chaveProducao = process.env.PHOTOROOM_LIVE_API_KEY;
   const chaveSandbox = process.env.PHOTOROOM_API_KEY;
   const chaveFal = process.env.FAL_KEY;

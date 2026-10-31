@@ -6,6 +6,7 @@ import { generateId } from "@/lib/id";
 import { nomeDoRecorte } from "@/lib/recorte";
 import { pecaResumo } from "@/lib/peca-resumo";
 import { FiltroTipos, TODAS, filtrarPorTipo } from "@/components/filtro-tipos";
+import { cabecalhosAuth } from "@/lib/sessao";
 
 // Editor de looks em tela cheia, inspirado no collage do Pinterest e no Canva:
 // - topo: fechar, desfazer/refazer e Salvar;
@@ -192,7 +193,7 @@ export function LookEditor({
     try {
       const res = await fetch("/api/remover-fundo-item", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await cabecalhosAuth()) },
         body: JSON.stringify({ fotoUrl: peca.fotoUrl }),
       });
       const dados = await res.json().catch(() => null);
@@ -444,7 +445,7 @@ export function LookEditor({
     try {
       const res = await fetch("/api/sugerir-outfit", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...(await cabecalhosAuth()) },
         body: JSON.stringify({
           modo: "trocar",
           pecas: pecasComFoto.map(pecaResumo),
@@ -455,7 +456,7 @@ export function LookEditor({
       const dados = await res.json().catch(() => null);
       const nova = dados?.pecaId ? pieces.find((p) => p.id === dados.pecaId) : null;
       if (!res.ok || !nova) {
-        setAviso("A IA não achou uma troca melhor agora.");
+        setAviso(res.status === 429 && dados?.error ? dados.error : "A IA não achou uma troca melhor agora.");
         return;
       }
       trocarPeca(itemSelecionado.id, nova);

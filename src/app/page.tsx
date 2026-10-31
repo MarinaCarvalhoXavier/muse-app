@@ -7,6 +7,7 @@ import { deletePiece, getPieces, updateFavorita } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { PieceCard } from "@/components/piece-card";
 import { useGradePinca, classeGrade } from "@/lib/use-grade-pinca";
+import { useSessao } from "@/lib/sessao";
 
 const ORDEM_PADRAO = ["Parte de cima", "Parte de baixo", "Vestidos", "Macacões", "Sapatos", "Bolsas", "Acessórios"];
 
@@ -87,6 +88,8 @@ export default function ArmarioPage() {
 
   // Menu de opções ao segurar uma peça.
   const router = useRouter();
+  // Visitante (sem login) só olha: sem coração clicável nem menu de segurar.
+  const { dona } = useSessao();
   const [menuPeca, setMenuPeca] = useState<Piece | null>(null);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
@@ -210,7 +213,7 @@ export default function ArmarioPage() {
                 <h2 className="mb-3 font-[var(--font-display)] text-lg">{tipo}</h2>
                 <div className={classeGrade(colunas)}>
                   {items.map((piece) => (
-                    <PieceCard key={piece.id} piece={piece} onToggleFavorita={handleToggleFavorita} onSegurar={abrirMenu} compacto={colunas >= 4} />
+                    <PieceCard key={piece.id} piece={piece} onToggleFavorita={dona ? handleToggleFavorita : undefined} onSegurar={dona ? abrirMenu : undefined} compacto={colunas >= 4} />
                   ))}
                 </div>
               </section>
@@ -224,7 +227,7 @@ export default function ArmarioPage() {
         <section className="mb-8">
           <div className={classeGrade(colunas)}>
             {piecesFiltradas.map((piece) => (
-              <PieceCard key={piece.id} piece={piece} onToggleFavorita={handleToggleFavorita} onSegurar={abrirMenu} compacto={colunas >= 4} />
+              <PieceCard key={piece.id} piece={piece} onToggleFavorita={dona ? handleToggleFavorita : undefined} onSegurar={dona ? abrirMenu : undefined} compacto={colunas >= 4} />
             ))}
           </div>
           {piecesFiltradas.length === 0 && (

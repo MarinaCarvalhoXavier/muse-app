@@ -3,6 +3,7 @@ import "./globals.css";
 import "./uicons-regular-rounded.css";
 import "./uicons-solid-rounded.css";
 import { BottomNav } from "@/components/bottom-nav";
+import { AvisoVisitante } from "@/components/aviso-visitante";
 
 export const metadata: Metadata = {
   title: "Muse — guarda-roupa com IA",
@@ -26,6 +27,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased pb-24">
         <div className="relative mx-auto min-h-screen max-w-md bg-[var(--color-paper)]">
+          <AvisoVisitante />
           {children}
         </div>
         <BottomNav />

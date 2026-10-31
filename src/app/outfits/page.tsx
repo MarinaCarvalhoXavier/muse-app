@@ -18,6 +18,7 @@ import {
 } from "@/lib/storage";
 import { generateId } from "@/lib/id";
 import { useGradePinca, classeGrade, estaPincando } from "@/lib/use-grade-pinca";
+import { useSessao } from "@/lib/sessao";
 
 // "hoje", "ontem", "há 5 dias" ou "12/10".
 function quandoFoi(dia: string, hoje: string): string {
@@ -42,6 +43,8 @@ export default function OutfitsPage() {
   const [erro, setErro] = useState<string | null>(null);
   const hoje = hojeLocal();
   const router = useRouter();
+  // Visitante (sem login) só olha: sem menu de segurar nem "Usei hoje".
+  const { dona } = useSessao();
 
   // Menu de opções ao segurar o dedo num look (long press).
   const [menuLook, setMenuLook] = useState<Outfit | null>(null);
@@ -52,6 +55,7 @@ export default function OutfitsPage() {
   const abriuPorPressao = useRef(false);
 
   function iniciarPressao(e: React.PointerEvent, look: Outfit) {
+    if (!dona) return;
     abriuPorPressao.current = false;
     const x = e.clientX;
     const y = e.clientY;
@@ -161,7 +165,7 @@ export default function OutfitsPage() {
           {carregando ? "Carregando…" : outfits.length === 1 ? "1 look salvo" : `${outfits.length} looks salvos`}
         </p>
         {outfits.length > 0 && (
-          <p className="mt-1 text-[11px] text-black/35">Segure um look pra ver mais opções · pinça pra mudar o tamanho</p>
+          <p className="mt-1 text-[11px] text-black/35">{dona ? "Segure um look pra ver mais opções · pinça pra mudar o tamanho" : "Pinça pra mudar o tamanho · toque num look pra ver como foi montado"}</p>
         )}
       </header>
 
@@ -197,7 +201,7 @@ export default function OutfitsPage() {
                   // Clique direito no computador abre o mesmo menu.
                   e.preventDefault();
                   cancelarPressao();
-                  abrirMenu(o);
+                  if (dona) abrirMenu(o);
                 }}
                 onClick={(e) => {
                   // Se o menu abriu por pressão, o toque não deve abrir o editor.
@@ -223,7 +227,7 @@ export default function OutfitsPage() {
                   </>
                 )}
               </Link>
-              {tabelaUsosExiste && colunas === 2 && (
+              {tabelaUsosExiste && dona && colunas === 2 && (
                 <div className="px-3 pb-3 pt-2">
                   <button
                     type="button"

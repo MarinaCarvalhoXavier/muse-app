@@ -5,6 +5,8 @@ import Link from "next/link";
 import { getOutfits, getPieces, getUsos } from "@/lib/storage";
 import { Outfit, Piece, Uso } from "@/lib/types";
 import { FiltroTipos, TODAS, filtrarPorTipo } from "@/components/filtro-tipos";
+import { useSessao } from "@/lib/sessao";
+import { supabase } from "@/lib/supabase";
 
 export default function PerfilPage() {
   const [pecas, setPecas] = useState<Piece[]>([]);
@@ -12,6 +14,7 @@ export default function PerfilPage() {
   const [usos, setUsos] = useState<Uso[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [tipoFiltro, setTipoFiltro] = useState<string>(TODAS);
+  const sessao = useSessao();
 
   useEffect(() => {
     Promise.all([getPieces(), getOutfits(), getUsos()]).then(([p, o, u]) => {
@@ -135,6 +138,26 @@ export default function PerfilPage() {
           Flaticon
         </a>
       </p>
+      {!sessao.carregando && (
+        <div className="mt-10 border-t border-black/5 pt-6 text-center">
+          {sessao.dona ? (
+            <>
+              <p className="text-xs text-black/40">Conectada como {sessao.email}</p>
+              <button
+                type="button"
+                onClick={() => supabase.auth.signOut()}
+                className="mt-2 rounded-full border border-black/15 px-5 py-2 text-sm text-black/70"
+              >
+                Sair
+              </button>
+            </>
+          ) : (
+            <Link href="/entrar" className="inline-block rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm font-semibold text-white">
+              Entrar (dona do armário)
+            </Link>
+          )}
+        </div>
+      )}
     </main>
   );
 }

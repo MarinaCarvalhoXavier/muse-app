@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Ocasiao, Outfit, OutfitItem, Peso, Piece } from "@/lib/types";
 import { generateId } from "@/lib/id";
 import { addOutfit, getCustomOcasioes, getPieces } from "@/lib/storage";
+import { cabecalhosAuth } from "@/lib/sessao";
 
 const OCASIOES_PADRAO: Ocasiao[] = ["Casual", "Trabalho", "Festa chique", "Balada eletrônica"];
 const PESOS: Peso[] = ["Leve", "Neutra", "Quente"];
@@ -89,7 +90,7 @@ export default function StylistPage() {
     try {
       const res = await fetch("/api/sugerir-outfit", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...(await cabecalhosAuth()) },
         body: JSON.stringify({
           modo: "sugestoes",
           pecas: comFoto.map(pecaResumo),
@@ -139,7 +140,7 @@ export default function StylistPage() {
       const comFoto = pieces.filter((p) => p.fotoUrl);
       const res = await fetch("/api/sugerir-outfit", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...(await cabecalhosAuth()) },
         body: JSON.stringify({
           modo: "trocar",
           pecas: comFoto.map(pecaResumo),
@@ -149,7 +150,7 @@ export default function StylistPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.pecaId) {
-        setErro("Não achei uma troca melhor pra essa peça agora.");
+        setErro(res.status === 429 ? data.error : "Não achei uma troca melhor pra essa peça agora.");
         return;
       }
       setSugestoes((prev) =>

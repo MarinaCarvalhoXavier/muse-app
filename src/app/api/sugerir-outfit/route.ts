@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { dentroDoLimiteVisitante, donaDaRequisicao } from "@/lib/auth-servidor";
+
+const LIMITE_VISITANTE_POR_DIA = 5;
 
 type PecaResumo = {
   id: string;
@@ -57,6 +60,17 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: "Chave da IA não configurada no servidor." }, { status: 500 });
+  }
+
+  // Visitantes (sem login) podem testar o Stylist, com limite por dia.
+  if (!(await donaDaRequisicao(req))) {
+    const ok = await dentroDoLimiteVisitante(req, "stylist", LIMITE_VISITANTE_POR_DIA);
+    if (!ok) {
+      return NextResponse.json(
+        { error: `Modo demonstração: você já usou as ${LIMITE_VISITANTE_POR_DIA} sugestões de hoje. Volte amanhã!` },
+        { status: 429 }
+      );
+    }
   }
 
   const body = await req.json().catch(() => null);

@@ -74,7 +74,12 @@ export function PieceCard({
       ) : (
         <div className="h-full w-full" style={{ backgroundColor: piece.cores?.[0] ?? "#e5e5e5" }} />
       )}
-      {!compacto && (
+      {!compacto && !onToggleFavorita && piece.favorita && (
+        <span className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/85 text-red-500 backdrop-blur">
+          <i className="fi-sr-heart" aria-label="Favorita" />
+        </span>
+      )}
+      {!compacto && onToggleFavorita && (
       <button
         type="button"
         onPointerDown={(e) => e.stopPropagation()}

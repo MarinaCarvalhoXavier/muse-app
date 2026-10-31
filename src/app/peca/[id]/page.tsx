@@ -5,10 +5,12 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Piece } from "@/lib/types";
 import { deletePiece, getPieceById, updateFavorita } from "@/lib/storage";
+import { useSessao } from "@/lib/sessao";
 
 export default function DetalhePecaPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { dona } = useSessao();
   const [piece, setPiece] = useState<Piece | null | undefined>(undefined);
   const [excluindo, setExcluindo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -57,7 +59,7 @@ export default function DetalhePecaPage() {
           <i className="fi-rr-arrow-left" aria-hidden="true" /> Voltar
         </button>
 
-        {piece && (
+        {piece && dona && (
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push(`/adicionar?editar=${piece.id}`)}
@@ -93,9 +95,10 @@ export default function DetalhePecaPage() {
                 className="h-full w-full object-contain"
               />
             ) : null}
+            {(dona || piece.favorita) && (
             <button
               type="button"
-              onClick={handleToggleFavorita}
+              onClick={dona ? handleToggleFavorita : undefined}
               aria-label={piece.favorita ? "Remover dos favoritos" : "Adicionar aos favoritos"}
               className={`absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/85 ${
                 piece.favorita ? "text-red-500" : "text-black/30"
@@ -103,6 +106,7 @@ export default function DetalhePecaPage() {
             >
               <i className={piece.favorita ? "fi-sr-heart" : "fi-rr-heart"} aria-hidden="true" />
             </button>
+            )}
           </div>
 
           <h1 className="mb-1 font-[var(--font-display)] text-2xl">

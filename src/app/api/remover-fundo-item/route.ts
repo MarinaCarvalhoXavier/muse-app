@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { donaDaRequisicao, respostaModoVisitante } from "@/lib/auth-servidor";
 import { createClient } from "@supabase/supabase-js";
 import { nomeDoRecorte } from "@/lib/recorte";
 
@@ -84,6 +85,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ url: publico.publicUrl, reaproveitado: true });
     }
 
+    // Gerar recorte novo custa IA e grava no Storage: só a dona logada.
+    const supabaseDona = await donaDaRequisicao(req);
+    if (!supabaseDona) return respostaModoVisitante();
+
     let imagem: Buffer | null = null;
     if (process.env.FAL_KEY) imagem = await recortarComFal(process.env.FAL_KEY, fotoUrl);
     if (!imagem && process.env.PHOTOROOM_API_KEY) {
@@ -93,7 +98,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Não consegui remover o fundo agora." }, { status: 502 });
     }
 
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabaseDona.storage
       .from("fotos-pecas")
       .upload(caminho, imagem, { contentType: "image/png", upsert: true });
     if (uploadError) {

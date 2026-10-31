@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { donaDaRequisicao, respostaModoVisitante } from "@/lib/auth-servidor";
 
 const PESOS_VALIDOS = ["Leve", "Neutra", "Quente"];
 
 export async function POST(req: NextRequest) {
+  // Gera custo de IA: só a dona logada pode usar.
+  if (!(await donaDaRequisicao(req))) return respostaModoVisitante();
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json(

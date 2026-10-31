@@ -1,3 +1,4 @@
+import { exigirDona } from "@/lib/sessao";
 import { supabase } from "./supabase";
 import { Ocasiao, Outfit, OutfitItem, Peso, Piece, Tipo, Uso } from "./types";
 
@@ -81,6 +82,8 @@ export async function getPieceById(id: string): Promise<Piece | null> {
 }
 
 export async function addPiece(piece: Piece): Promise<{ error?: string }> {
+  const bloqueio = await exigirDona();
+  if (bloqueio) return { error: bloqueio };
   const { error } = await supabase.from("pieces").insert({
     id: piece.id,
     tipo: piece.tipo,
@@ -104,6 +107,8 @@ export async function addPiece(piece: Piece): Promise<{ error?: string }> {
 }
 
 export async function updatePiece(piece: Piece): Promise<{ error?: string }> {
+  const bloqueio = await exigirDona();
+  if (bloqueio) return { error: bloqueio };
   const { error } = await supabase
     .from("pieces")
     .update({
@@ -128,6 +133,8 @@ export async function updatePiece(piece: Piece): Promise<{ error?: string }> {
 }
 
 export async function updateFavorita(id: string, favorita: boolean): Promise<{ error?: string }> {
+  const bloqueio = await exigirDona();
+  if (bloqueio) return { error: bloqueio };
   const { error } = await supabase.from("pieces").update({ favorita }).eq("id", id);
   if (error) {
     console.error("Erro ao atualizar favorita:", error.message);
@@ -137,6 +144,8 @@ export async function updateFavorita(id: string, favorita: boolean): Promise<{ e
 }
 
 export async function deletePiece(id: string): Promise<{ error?: string }> {
+  const bloqueio = await exigirDona();
+  if (bloqueio) return { error: bloqueio };
   const { error } = await supabase.from("pieces").delete().eq("id", id);
   if (error) {
     console.error("Erro ao excluir peça:", error.message);
@@ -177,6 +186,8 @@ export async function getUsos(): Promise<{ usos: Uso[]; tabelaExiste: boolean }>
 }
 
 export async function registrarUso(outfitId: string, dia: string): Promise<{ uso?: Uso; error?: string }> {
+  const bloqueio = await exigirDona();
+  if (bloqueio) return { error: bloqueio };
   const { data, error } = await supabase
     .from("usos")
     .upsert({ outfit_id: outfitId, usado_em: dia }, { onConflict: "outfit_id,usado_em" })
@@ -190,6 +201,8 @@ export async function registrarUso(outfitId: string, dia: string): Promise<{ uso
 }
 
 export async function removerUso(outfitId: string, dia: string): Promise<{ error?: string }> {
+  const bloqueio = await exigirDona();
+  if (bloqueio) return { error: bloqueio };
   const { error } = await supabase.from("usos").delete().eq("outfit_id", outfitId).eq("usado_em", dia);
   if (error) {
     console.error("Erro ao remover uso:", error.message);
@@ -212,6 +225,8 @@ export async function getOutfits(): Promise<Outfit[]> {
 }
 
 export async function addOutfit(outfit: Outfit): Promise<{ error?: string }> {
+  const bloqueio = await exigirDona();
+  if (bloqueio) return { error: bloqueio };
   const { error } = await supabase.from("outfits").insert({
     id: outfit.id,
     nome: outfit.nome,
@@ -244,6 +259,8 @@ export async function updateOutfit(
   id: string,
   updates: { nome?: string; itens?: OutfitItem[] }
 ): Promise<{ error?: string }> {
+  const bloqueio = await exigirDona();
+  if (bloqueio) return { error: bloqueio };
   const payload: Record<string, unknown> = {};
   if (updates.nome !== undefined) payload.nome = updates.nome;
   if (updates.itens !== undefined) payload.itens = updates.itens;
@@ -257,6 +274,8 @@ export async function updateOutfit(
 }
 
 export async function deleteOutfit(id: string): Promise<{ error?: string }> {
+  const bloqueio = await exigirDona();
+  if (bloqueio) return { error: bloqueio };
   const { error } = await supabase.from("outfits").delete().eq("id", id);
   if (error) {
     console.error("Erro ao excluir outfit:", error.message);
