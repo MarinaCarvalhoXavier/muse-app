@@ -3,16 +3,20 @@
 import { useRef } from "react";
 import Link from "next/link";
 import { Piece } from "@/lib/types";
+import { estaPincando } from "@/lib/use-grade-pinca";
 
 export function PieceCard({
   piece,
   onToggleFavorita,
   onSegurar,
+  compacto = false,
 }: {
   piece: Piece;
   onToggleFavorita?: (piece: Piece) => void;
   // Chamado ao segurar o dedo na peça (ou clique direito no computador).
   onSegurar?: (piece: Piece) => void;
+  // Grade com muitas colunas (pinça): card pequeno, sem o coração.
+  compacto?: boolean;
 }) {
   const pressionando = useRef<{ timer: ReturnType<typeof setTimeout>; x: number; y: number } | null>(null);
   const abriuPorPressao = useRef(false);
@@ -30,6 +34,7 @@ export function PieceCard({
         if (!onSegurar) return;
         abriuPorPressao.current = false;
         const timer = setTimeout(() => {
+          if (estaPincando()) return;
           abriuPorPressao.current = true;
           pressionando.current = null;
           onSegurar(piece);
@@ -51,12 +56,12 @@ export function PieceCard({
       }}
       onClick={(e) => {
         // Se o menu abriu por pressão, o toque não deve abrir a peça.
-        if (abriuPorPressao.current) {
+        if (abriuPorPressao.current || estaPincando()) {
           e.preventDefault();
           abriuPorPressao.current = false;
         }
       }}
-      className="relative block aspect-[3/4] select-none overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition-transform active:scale-[0.98] [-webkit-touch-callout:none]"
+      className={`relative block aspect-[3/4] select-none overflow-hidden ${compacto ? "rounded-lg" : "rounded-2xl"} border border-black/5 bg-white shadow-sm transition-transform active:scale-[0.98] [-webkit-touch-callout:none]`}
     >
       {piece.fotoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -69,6 +74,7 @@ export function PieceCard({
       ) : (
         <div className="h-full w-full" style={{ backgroundColor: piece.cores?.[0] ?? "#e5e5e5" }} />
       )}
+      {!compacto && (
       <button
         type="button"
         onPointerDown={(e) => e.stopPropagation()}
@@ -84,6 +90,7 @@ export function PieceCard({
       >
         <i className={piece.favorita ? "fi-sr-heart" : "fi-rr-heart"} aria-hidden="true" />
       </button>
+      )}
     </Link>
   );
 }

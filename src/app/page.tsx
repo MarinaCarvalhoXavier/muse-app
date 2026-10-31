@@ -6,6 +6,7 @@ import { Piece } from "@/lib/types";
 import { deletePiece, getPieces, updateFavorita } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import { PieceCard } from "@/components/piece-card";
+import { useGradePinca, classeGrade } from "@/lib/use-grade-pinca";
 
 const ORDEM_PADRAO = ["Parte de cima", "Parte de baixo", "Vestidos", "Macacões", "Sapatos", "Bolsas", "Acessórios"];
 
@@ -26,6 +27,8 @@ const FILTROS_VAZIOS: FiltrosAvancados = { subtipos: [], ocasioes: [], cores: []
 
 export default function ArmarioPage() {
   const [pieces, setPieces] = useState<Piece[]>([]);
+  // Pinça com dois dedos muda quantas peças aparecem por linha (2 a 5), como a galeria do iPhone.
+  const colunas = useGradePinca("muse:colunas-armario", [2, 3, 4, 5]);
   const [carregando, setCarregando] = useState(true);
   const [filtro, setFiltro] = useState<string>("Todas");
   const [filtrosAvancados, setFiltrosAvancados] = useState<FiltrosAvancados>(FILTROS_VAZIOS);
@@ -205,9 +208,9 @@ export default function ArmarioPage() {
             return (
               <section key={tipo} className="mb-8">
                 <h2 className="mb-3 font-[var(--font-display)] text-lg">{tipo}</h2>
-                <div className="grid grid-cols-2 gap-3">
+                <div className={classeGrade(colunas)}>
                   {items.map((piece) => (
-                    <PieceCard key={piece.id} piece={piece} onToggleFavorita={handleToggleFavorita} onSegurar={abrirMenu} />
+                    <PieceCard key={piece.id} piece={piece} onToggleFavorita={handleToggleFavorita} onSegurar={abrirMenu} compacto={colunas >= 4} />
                   ))}
                 </div>
               </section>
@@ -219,9 +222,9 @@ export default function ArmarioPage() {
         </>
       ) : (
         <section className="mb-8">
-          <div className="grid grid-cols-2 gap-3">
+          <div className={classeGrade(colunas)}>
             {piecesFiltradas.map((piece) => (
-              <PieceCard key={piece.id} piece={piece} onToggleFavorita={handleToggleFavorita} onSegurar={abrirMenu} />
+              <PieceCard key={piece.id} piece={piece} onToggleFavorita={handleToggleFavorita} onSegurar={abrirMenu} compacto={colunas >= 4} />
             ))}
           </div>
           {piecesFiltradas.length === 0 && (

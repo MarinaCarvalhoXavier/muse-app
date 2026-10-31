@@ -17,6 +17,7 @@ import {
   updateOutfit,
 } from "@/lib/storage";
 import { generateId } from "@/lib/id";
+import { useGradePinca, classeGrade, estaPincando } from "@/lib/use-grade-pinca";
 
 // "hoje", "ontem", "há 5 dias" ou "12/10".
 function quandoFoi(dia: string, hoje: string): string {
@@ -32,6 +33,8 @@ function quandoFoi(dia: string, hoje: string): string {
 export default function OutfitsPage() {
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [pieces, setPieces] = useState<Piece[]>([]);
+  // Pinça com dois dedos muda quantos looks aparecem por linha (2 a 4).
+  const colunas = useGradePinca("muse:colunas-looks", [2, 3, 4]);
   const [usos, setUsos] = useState<Uso[]>([]);
   const [tabelaUsosExiste, setTabelaUsosExiste] = useState(true);
   const [carregando, setCarregando] = useState(true);
@@ -53,6 +56,7 @@ export default function OutfitsPage() {
     const x = e.clientX;
     const y = e.clientY;
     const timer = setTimeout(() => {
+      if (estaPincando()) return;
       abriuPorPressao.current = true;
       pressionando.current = null;
       abrirMenu(look);
@@ -157,7 +161,7 @@ export default function OutfitsPage() {
           {carregando ? "Carregando…" : outfits.length === 1 ? "1 look salvo" : `${outfits.length} looks salvos`}
         </p>
         {outfits.length > 0 && (
-          <p className="mt-1 text-[11px] text-black/35">Segure um look pra ver mais opções</p>
+          <p className="mt-1 text-[11px] text-black/35">Segure um look pra ver mais opções · pinça pra mudar o tamanho</p>
         )}
       </header>
 
@@ -174,13 +178,13 @@ export default function OutfitsPage() {
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className={classeGrade(colunas)}>
         {outfits.map((o) => {
           const usosDoLook = usos.filter((u) => u.outfitId === o.id);
           const usouHoje = usosDoLook.some((u) => u.usadoEm === hoje);
           const ultimo = usosDoLook[0]?.usadoEm;
           return (
-            <div key={o.id} className="overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm">
+            <div key={o.id} className={`overflow-hidden border border-black/5 bg-white shadow-sm ${colunas >= 4 ? "rounded-lg" : "rounded-2xl"}`}>
               <Link
                 href={`/outfits/${o.id}`}
                 className="block select-none transition-transform active:scale-[0.98] [-webkit-touch-callout:none]"
@@ -197,7 +201,7 @@ export default function OutfitsPage() {
                 }}
                 onClick={(e) => {
                   // Se o menu abriu por pressão, o toque não deve abrir o editor.
-                  if (abriuPorPressao.current) {
+                  if (abriuPorPressao.current || estaPincando()) {
                     e.preventDefault();
                     abriuPorPressao.current = false;
                   }
@@ -207,14 +211,19 @@ export default function OutfitsPage() {
                 <div className="relative aspect-[3/4] w-full overflow-hidden bg-white">
                   <LookMiniatura look={o} pieces={pieces} />
                 </div>
-                <p className="truncate px-3 pt-2 text-sm font-medium">{o.nome}</p>
-                <p className="px-3 text-[11px] text-black/45">
-                  {usosDoLook.length === 0
-                    ? "Ainda não usado"
-                    : `Usado ${usosDoLook.length}x · ${quandoFoi(ultimo, hoje)}`}
-                </p>
+                {colunas === 3 && <p className="truncate px-2 py-1.5 text-[11px] font-medium">{o.nome}</p>}
+                {colunas === 2 && (
+                  <>
+                    <p className="truncate px-3 pt-2 text-sm font-medium">{o.nome}</p>
+                    <p className="px-3 text-[11px] text-black/45">
+                      {usosDoLook.length === 0
+                        ? "Ainda não usado"
+                        : `Usado ${usosDoLook.length}x · ${quandoFoi(ultimo, hoje)}`}
+                    </p>
+                  </>
+                )}
               </Link>
-              {tabelaUsosExiste && (
+              {tabelaUsosExiste && colunas === 2 && (
                 <div className="px-3 pb-3 pt-2">
                   <button
                     type="button"
